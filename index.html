@@ -5,11 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>the room</title>
   <style>
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
       --paper: #242220;
@@ -19,10 +15,7 @@
       --surface: #2c2a28;
     }
 
-    html, body {
-      height: 100%;
-      overflow: hidden;
-    }
+    html, body { height: 100%; overflow: hidden; }
 
     body {
       background: var(--paper);
@@ -32,18 +25,59 @@
       line-height: 1.7;
     }
 
-    #room-label {
+    /* ── Top bar ── */
+    #topbar {
       position: fixed;
-      top: 1.5rem;
-      left: 2rem;
-      font-size: 0.85rem;
-      font-weight: normal;
-      color: var(--faint);
-      letter-spacing: 0.05em;
+      top: 0; left: 0; right: 0;
+      height: 2.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      z-index: 100;
       pointer-events: none;
-      z-index: 0;
     }
 
+    #breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: var(--faint);
+      letter-spacing: 0.04em;
+      pointer-events: all;
+    }
+
+    #breadcrumb .crumb {
+      cursor: pointer;
+      color: var(--faint);
+      text-decoration: none;
+    }
+
+    #breadcrumb .crumb:hover { color: var(--ink); }
+
+    #breadcrumb .crumb.current {
+      color: var(--ink);
+      cursor: default;
+    }
+
+    #breadcrumb .sep { color: var(--warm); user-select: none; }
+
+    #new-folder-btn {
+      pointer-events: all;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      color: var(--faint);
+      background: none;
+      border: none;
+      font-family: inherit;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    #new-folder-btn:hover { color: var(--ink); }
+
+    /* ── Panels ── */
     .panel {
       position: absolute;
       background: var(--surface);
@@ -54,25 +88,20 @@
       z-index: 1;
     }
 
-    .panel.raised {
-      z-index: 10;
-      border-color: var(--faint);
-    }
+    .panel.raised { border-color: var(--faint); }
 
     .panel-handle {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0.6rem 1rem;
+      padding: 0.55rem 1rem;
       cursor: grab;
       border-bottom: 1px solid var(--warm);
       user-select: none;
       flex-shrink: 0;
     }
 
-    .panel-handle:active {
-      cursor: grabbing;
-    }
+    .panel-handle:active { cursor: grabbing; }
 
     .panel-handle h2 {
       font-size: 0.75rem;
@@ -82,171 +111,140 @@
       color: var(--faint);
     }
 
-    .panel-body {
-      padding: 1rem;
-      flex: 1;
-      overflow: hidden;
-    }
+    .panel-body { padding: 1rem; flex: 1; overflow: hidden; }
 
-    /* Notepad */
+    /* ── Notepad ── */
     #notepad {
-      width: 100%;
-      min-height: 160px;
-      background: transparent;
-      border: none;
-      padding: 0;
-      font-family: inherit;
-      font-size: inherit;
-      line-height: inherit;
-      color: var(--ink);
-      resize: none;
-      outline: none;
+      width: 100%; min-height: 160px;
+      background: transparent; border: none; padding: 0;
+      font-family: inherit; font-size: inherit; line-height: inherit;
+      color: var(--ink); resize: none; outline: none;
     }
-
     #notepad::placeholder { color: var(--faint); }
 
-    .saved-note {
-      font-size: 0.7rem;
-      color: var(--faint);
-      margin-top: 0.5rem;
-      height: 1em;
-    }
+    .saved-note { font-size: 0.7rem; color: var(--faint); margin-top: 0.5rem; height: 1em; }
 
-    /* Checklist */
+    /* ── Checklist ── */
     #checklist-items { list-style: none; }
 
     #checklist-items li {
-      display: flex;
-      align-items: baseline;
-      gap: 0.75rem;
-      padding: 0.2rem 0;
+      display: flex; align-items: baseline; gap: 0.75rem; padding: 0.2rem 0;
     }
 
     #checklist-items input[type="checkbox"] {
-      accent-color: var(--faint);
-      flex-shrink: 0;
-      margin-top: 0.2rem;
+      accent-color: var(--faint); flex-shrink: 0; margin-top: 0.2rem;
     }
 
     #checklist-items label { flex: 1; }
 
-    #checklist-items li.done label {
-      color: var(--faint);
-      text-decoration: line-through;
-    }
+    #checklist-items li.done label { color: var(--faint); text-decoration: line-through; }
 
     #new-item-row {
-      display: flex;
-      gap: 0.75rem;
-      margin-top: 0.75rem;
-      padding-top: 0.75rem;
+      display: flex; gap: 0.75rem;
+      margin-top: 0.75rem; padding-top: 0.75rem;
       border-top: 1px solid var(--warm);
     }
 
     #new-item {
-      flex: 1;
-      background: transparent;
-      border: none;
-      border-bottom: 1px solid var(--warm);
-      padding: 0.2rem 0;
-      font-family: inherit;
-      font-size: inherit;
-      color: var(--ink);
-      outline: none;
+      flex: 1; background: transparent; border: none;
+      border-bottom: 1px solid var(--warm); padding: 0.2rem 0;
+      font-family: inherit; font-size: inherit; color: var(--ink); outline: none;
     }
-
     #new-item::placeholder { color: var(--faint); }
 
     button {
-      background: none;
-      border: none;
-      color: var(--faint);
-      font-family: inherit;
-      font-size: 0.85rem;
-      cursor: pointer;
-      padding: 0;
+      background: none; border: none; color: var(--faint);
+      font-family: inherit; font-size: 0.85rem; cursor: pointer; padding: 0;
     }
-
     button:hover { color: var(--ink); }
 
-    /* Resize handle */
+    /* ── Resize handle ── */
     .resize-handle {
-      position: absolute;
-      bottom: 0;
-      right: 0;
-      width: 18px;
-      height: 18px;
-      cursor: nwse-resize;
-      z-index: 2;
+      position: absolute; bottom: 0; right: 0;
+      width: 18px; height: 18px; cursor: nwse-resize; z-index: 2;
     }
-
     .resize-handle::after {
       content: '';
-      position: absolute;
-      bottom: 4px;
-      right: 4px;
-      width: 6px;
-      height: 6px;
+      position: absolute; bottom: 4px; right: 4px;
+      width: 6px; height: 6px;
       border-right: 1px solid var(--faint);
       border-bottom: 1px solid var(--faint);
     }
 
-    /* Image panels */
+    /* ── Image panels ── */
     .image-panel .panel-handle {
-      border-bottom: none;
-      padding: 0.4rem 0.6rem;
-      opacity: 0;
-      transition: opacity 0.15s;
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+      border-bottom: none; padding: 0.4rem 0.6rem;
+      opacity: 0; transition: opacity 0.15s;
+      position: absolute; top: 0; left: 0; right: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.55), transparent);
       z-index: 1;
     }
+    .image-panel:hover .panel-handle { opacity: 1; }
+    .image-panel .panel-body { padding: 0; display: flex; }
+    .image-panel img { width: 100%; height: 100%; object-fit: contain; display: block; }
 
-    .image-panel:hover .panel-handle {
-      opacity: 1;
+    /* ── Folder panels ── */
+    .folder-panel {
+      width: 180px;
+      min-height: 80px;
     }
 
-    .image-panel .panel-body {
+    .folder-panel .panel-handle {
+      border-bottom-color: transparent;
+    }
+
+    .folder-panel .folder-name {
+      font-size: 0.9rem;
+      color: var(--ink);
+      flex: 1;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    .folder-panel .folder-name:hover { color: var(--ink); text-decoration: underline; }
+
+    .folder-panel .folder-name-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--faint);
+      font-family: inherit;
+      font-size: 0.9rem;
+      color: var(--ink);
+      outline: none;
       padding: 0;
-      display: flex;
     }
 
-    .image-panel img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: block;
+    .folder-panel .panel-body {
+      padding: 0.4rem 1rem 0.8rem;
+      font-size: 0.75rem;
+      color: var(--faint);
     }
 
-    /* Drop overlay */
+    /* ── Drop overlay ── */
     body.drag-over::after {
       content: 'drop image';
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      color: var(--faint);
-      letter-spacing: 0.1em;
-      border: 1px dashed var(--warm);
-      margin: 2rem;
-      pointer-events: none;
-      z-index: 9999;
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; color: var(--faint); letter-spacing: 0.1em;
+      border: 1px dashed var(--warm); margin: 2rem;
+      pointer-events: none; z-index: 9999;
     }
   </style>
 </head>
 <body>
 
-  <span id="room-label">the room</span>
+  <div id="topbar">
+    <nav id="breadcrumb"></nav>
+    <button id="new-folder-btn">+ folder</button>
+  </div>
 
-  <div class="panel" id="notes-section">
-    <div class="panel-handle">
-      <h2>notepad</h2>
-    </div>
+  <div class="panel" id="notes-section" style="top: 3.5rem">
+    <div class="panel-handle"><h2>notepad</h2></div>
     <div class="panel-body">
       <textarea id="notepad" placeholder="anything" rows="8"></textarea>
       <div class="saved-note" id="save-status"></div>
@@ -254,10 +252,8 @@
     <div class="resize-handle"></div>
   </div>
 
-  <div class="panel" id="checklist-section">
-    <div class="panel-handle">
-      <h2>checklist</h2>
-    </div>
+  <div class="panel" id="checklist-section" style="top: 3.5rem">
+    <div class="panel-handle"><h2>checklist</h2></div>
     <div class="panel-body">
       <ul id="checklist-items"></ul>
       <div id="new-item-row">
@@ -269,21 +265,81 @@
   </div>
 
   <script>
-    // ─── Layout (text panels) ────────────────────────────────────────────────
+    // ─── Path / routing ───────────────────────────────────────────────────────
+
+    function currentPath() {
+      return decodeURIComponent(location.hash.slice(1)) || '';
+    }
+
+    function pathKey(key) {
+      const p = currentPath();
+      return p ? `room-${key}:${p}` : `room-${key}`;
+    }
+
+    function parentPath(path) {
+      if (!path) return null;
+      const parts = path.split('/');
+      parts.pop();
+      return parts.join('/');
+    }
+
+    function childPath(name) {
+      const p = currentPath();
+      return p ? `${p}/${name}` : name;
+    }
+
+    function navigate(path) {
+      location.hash = encodeURIComponent(path);
+      init();
+    }
+
+    // ─── Breadcrumb ───────────────────────────────────────────────────────────
+
+    function renderBreadcrumb() {
+      const nav = document.getElementById('breadcrumb');
+      nav.innerHTML = '';
+      const path = currentPath();
+      const parts = path ? path.split('/') : [];
+
+      const rootCrumb = document.createElement('span');
+      rootCrumb.className = 'crumb' + (parts.length === 0 ? ' current' : '');
+      rootCrumb.textContent = 'the room';
+      if (parts.length > 0) rootCrumb.addEventListener('click', () => navigate(''));
+      nav.appendChild(rootCrumb);
+
+      parts.forEach((part, i) => {
+        const sep = document.createElement('span');
+        sep.className = 'sep';
+        sep.textContent = ' › ';
+        nav.appendChild(sep);
+
+        const crumb = document.createElement('span');
+        const isLast = i === parts.length - 1;
+        crumb.className = 'crumb' + (isLast ? ' current' : '');
+        crumb.textContent = part;
+        if (!isLast) {
+          const crumbPath = parts.slice(0, i + 1).join('/');
+          crumb.addEventListener('click', () => navigate(crumbPath));
+        }
+        nav.appendChild(crumb);
+      });
+    }
+
+    // ─── Layout ───────────────────────────────────────────────────────────────
 
     const DEFAULT_POSITIONS = {
-      'notes-section':     { x: 60,  y: 80, w: 340 },
-      'checklist-section': { x: 440, y: 80, w: 320 },
+      'notes-section':     { x: 60,  y: 60, w: 340 },
+      'checklist-section': { x: 440, y: 60, w: 320 },
     };
 
     function loadLayout() {
-      try { return JSON.parse(localStorage.getItem('room-layout')) || {}; }
+      try { return JSON.parse(localStorage.getItem(pathKey('layout'))) || {}; }
       catch { return {}; }
     }
 
     function saveLayout() {
       const layout = {};
-      document.querySelectorAll('.panel:not(.image-panel)').forEach(panel => {
+      document.querySelectorAll('.panel:not(.image-panel):not(.folder-panel)').forEach(panel => {
         layout[panel.id] = {
           x: parseInt(panel.style.left),
           y: parseInt(panel.style.top),
@@ -291,13 +347,13 @@
           h: panel.style.height ? parseInt(panel.style.height) : null,
         };
       });
-      localStorage.setItem('room-layout', JSON.stringify(layout));
+      localStorage.setItem(pathKey('layout'), JSON.stringify(layout));
     }
 
     function applyLayout() {
       const saved = loadLayout();
-      document.querySelectorAll('.panel:not(.image-panel)').forEach(panel => {
-        const pos = saved[panel.id] || DEFAULT_POSITIONS[panel.id] || { x: 60, y: 80, w: 340 };
+      document.querySelectorAll('.panel:not(.image-panel):not(.folder-panel)').forEach(panel => {
+        const pos = saved[panel.id] || DEFAULT_POSITIONS[panel.id] || { x: 60, y: 60, w: 340 };
         panel.style.left  = pos.x + 'px';
         panel.style.top   = pos.y + 'px';
         panel.style.width = pos.w + 'px';
@@ -305,78 +361,7 @@
       });
     }
 
-    applyLayout();
-
-    // ─── Images ─────────────────────────────────────────────────────────────
-
-    function loadImages() {
-      try { return JSON.parse(localStorage.getItem('room-images')) || []; }
-      catch { return []; }
-    }
-
-    function saveImages() {
-      localStorage.setItem('room-images', JSON.stringify(imageStore));
-    }
-
-    let imageStore = loadImages();
-
-    function createImagePanel(data) {
-      const panel = document.createElement('div');
-      panel.className = 'panel image-panel';
-      panel.id = data.id;
-      panel.style.left   = data.x + 'px';
-      panel.style.top    = data.y + 'px';
-      panel.style.width  = data.w + 'px';
-      panel.style.height = data.h + 'px';
-
-      const handle = document.createElement('div');
-      handle.className = 'panel-handle';
-
-      const title = document.createElement('h2');
-      title.textContent = 'image';
-
-      const del = document.createElement('button');
-      del.textContent = '×';
-      del.addEventListener('click', e => {
-        e.stopPropagation();
-        undoStack.push({ type: 'delete-image', data: { ...data } });
-        imageStore = imageStore.filter(img => img.id !== data.id);
-        saveImages();
-        panel.remove();
-      });
-
-      handle.append(title, del);
-
-      const body = document.createElement('div');
-      body.className = 'panel-body';
-
-      const img = document.createElement('img');
-      img.src = data.src;
-      img.draggable = false;
-      body.appendChild(img);
-
-      const resizeHandle = document.createElement('div');
-      resizeHandle.className = 'resize-handle';
-
-      panel.append(handle, body, resizeHandle);
-      document.body.appendChild(panel);
-
-      attachDragHandle(handle, panel, () => {
-        const entry = imageStore.find(i => i.id === data.id);
-        if (entry) { entry.x = parseInt(panel.style.left); entry.y = parseInt(panel.style.top); saveImages(); }
-      });
-
-      attachResizeHandle(resizeHandle, panel, () => {
-        const entry = imageStore.find(i => i.id === data.id);
-        if (entry) { entry.w = panel.offsetWidth; entry.h = panel.offsetHeight; saveImages(); }
-      });
-
-      panel.addEventListener('mousedown', () => bringToFront(panel));
-    }
-
-    imageStore.forEach(createImagePanel);
-
-    // ─── Undo stack ──────────────────────────────────────────────────────────
+    // ─── Undo stack ───────────────────────────────────────────────────────────
 
     const undoStack = [];
 
@@ -398,15 +383,22 @@
         createImagePanel(snap.data);
         return;
       }
+      if (snap.type === 'delete-folder') {
+        folderStore.push(snap.data);
+        saveFolders();
+        createFolderPanel(snap.data);
+        return;
+      }
       const panel = document.getElementById(snap.id);
       if (!panel) return;
-      panel.style.left   = snap.left;
-      panel.style.top    = snap.top;
-      panel.style.width  = snap.width;
+      panel.style.left  = snap.left;
+      panel.style.top   = snap.top;
+      panel.style.width = snap.width;
       if (snap.height) panel.style.height = snap.height;
       if (panel.classList.contains('image-panel')) {
-        const entry = imageStore.find(i => i.id === snap.id);
-        if (entry) { entry.x = parseInt(snap.left); entry.y = parseInt(snap.top); entry.w = parseInt(snap.width); if (snap.height) entry.h = parseInt(snap.height); saveImages(); }
+        syncImageStore(panel);
+      } else if (panel.classList.contains('folder-panel')) {
+        syncFolderStore(panel);
       } else {
         saveLayout();
       }
@@ -420,14 +412,14 @@
       }
     });
 
-    // ─── Shared drag/resize ──────────────────────────────────────────────────
+    // ─── Shared drag / resize ─────────────────────────────────────────────────
 
-    let dragging = null, dragOffsetX = 0, dragOffsetY = 0, dragSnapshot = null;
-    let resizing = null, resizeSnapshot = null, onResizeDone = null, onDragDone = null;
+    let dragging = null, dragOffsetX = 0, dragOffsetY = 0, dragSnapshot = null, onDragDone = null;
+    let resizing = null, resizeSnapshot = null, onResizeDone = null;
 
     function attachDragHandle(handle, panel, onDone) {
       handle.addEventListener('mousedown', e => {
-        if (e.target.tagName === 'BUTTON') return;
+        if (e.target.closest('button') || e.target.classList.contains('folder-name') || e.target.classList.contains('folder-name-input')) return;
         bringToFront(panel);
         dragSnapshot = snapshotPanel(panel);
         dragging = panel;
@@ -464,29 +456,19 @@
     document.addEventListener('mouseup', () => {
       if (dragging && dragSnapshot) {
         undoStack.push(dragSnapshot);
-        if (onDragDone) onDragDone();
-        else saveLayout();
+        if (onDragDone) onDragDone(); else saveLayout();
         dragSnapshot = null; onDragDone = null;
       }
       if (resizing && resizeSnapshot) {
         undoStack.push(resizeSnapshot);
-        if (onResizeDone) onResizeDone();
-        else saveLayout();
+        if (onResizeDone) onResizeDone(); else saveLayout();
         resizeSnapshot = null; onResizeDone = null;
       }
       dragging = null;
       resizing = null;
     });
 
-    // ─── Attach drag/resize to static panels ────────────────────────────────
-
-    document.querySelectorAll('.panel:not(.image-panel)').forEach(panel => {
-      attachDragHandle(panel.querySelector('.panel-handle'), panel);
-      attachResizeHandle(panel.querySelector('.resize-handle'), panel);
-      panel.addEventListener('mousedown', () => bringToFront(panel));
-    });
-
-    // ─── z-index ─────────────────────────────────────────────────────────────
+    // ─── z-index ──────────────────────────────────────────────────────────────
 
     let zTop = 10;
     function bringToFront(panel) {
@@ -495,7 +477,230 @@
       panel.style.zIndex = ++zTop;
     }
 
-    // ─── Image drop ──────────────────────────────────────────────────────────
+    // ─── Images ───────────────────────────────────────────────────────────────
+
+    let imageStore = [];
+
+    function loadImages() {
+      try { return JSON.parse(localStorage.getItem(pathKey('images'))) || []; }
+      catch { return []; }
+    }
+
+    function saveImages() {
+      localStorage.setItem(pathKey('images'), JSON.stringify(imageStore));
+    }
+
+    function syncImageStore(panel) {
+      const entry = imageStore.find(i => i.id === panel.id);
+      if (!entry) return;
+      entry.x = parseInt(panel.style.left);
+      entry.y = parseInt(panel.style.top);
+      entry.w = panel.offsetWidth;
+      entry.h = panel.offsetHeight;
+      saveImages();
+    }
+
+    function createImagePanel(data) {
+      const panel = document.createElement('div');
+      panel.className = 'panel image-panel';
+      panel.id = data.id;
+      panel.style.left   = data.x + 'px';
+      panel.style.top    = data.y + 'px';
+      panel.style.width  = data.w + 'px';
+      panel.style.height = data.h + 'px';
+
+      const handle = document.createElement('div');
+      handle.className = 'panel-handle';
+
+      const title = document.createElement('h2');
+      title.textContent = 'image';
+
+      const del = document.createElement('button');
+      del.textContent = '×';
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        undoStack.push({ type: 'delete-image', data: { ...data } });
+        imageStore = imageStore.filter(i => i.id !== data.id);
+        saveImages();
+        panel.remove();
+      });
+
+      handle.append(title, del);
+
+      const body = document.createElement('div');
+      body.className = 'panel-body';
+      const img = document.createElement('img');
+      img.src = data.src;
+      img.draggable = false;
+      body.appendChild(img);
+
+      const resizeHandle = document.createElement('div');
+      resizeHandle.className = 'resize-handle';
+
+      panel.append(handle, body, resizeHandle);
+      document.body.appendChild(panel);
+
+      attachDragHandle(handle, panel, () => syncImageStore(panel));
+      attachResizeHandle(resizeHandle, panel, () => syncImageStore(panel));
+      panel.addEventListener('mousedown', () => bringToFront(panel));
+    }
+
+    // ─── Folders ──────────────────────────────────────────────────────────────
+
+    let folderStore = [];
+
+    function loadFolders() {
+      try { return JSON.parse(localStorage.getItem(pathKey('folders'))) || []; }
+      catch { return []; }
+    }
+
+    function saveFolders() {
+      localStorage.setItem(pathKey('folders'), JSON.stringify(folderStore));
+    }
+
+    function syncFolderStore(panel) {
+      const entry = folderStore.find(f => f.id === panel.id);
+      if (!entry) return;
+      entry.x = parseInt(panel.style.left);
+      entry.y = parseInt(panel.style.top);
+      entry.w = panel.offsetWidth;
+      entry.h = panel.offsetHeight;
+      saveFolders();
+    }
+
+    function createFolderPanel(data) {
+      const panel = document.createElement('div');
+      panel.className = 'panel folder-panel';
+      panel.id = data.id;
+      panel.style.left   = data.x + 'px';
+      panel.style.top    = data.y + 'px';
+      panel.style.width  = (data.w || 180) + 'px';
+      if (data.h) panel.style.height = data.h + 'px';
+
+      const handle = document.createElement('div');
+      handle.className = 'panel-handle';
+
+      // Folder icon — click to open
+      const icon = document.createElement('span');
+      icon.textContent = '▸ ';
+      icon.style.cssText = 'color:var(--faint);font-size:0.7rem;flex-shrink:0;cursor:pointer;';
+      icon.title = 'open';
+      icon.addEventListener('click', () => navigate(childPath(data.name)));
+
+      // Name (clickable to open)
+      const nameEl = document.createElement('span');
+      nameEl.className = 'folder-name';
+      nameEl.textContent = data.name;
+      nameEl.title = 'double-click to rename';
+
+      nameEl.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        startRename(panel, data, nameEl);
+      });
+
+      const del = document.createElement('button');
+      del.textContent = '×';
+      del.title = 'remove from room';
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        undoStack.push({ type: 'delete-folder', data: { ...data } });
+        folderStore = folderStore.filter(f => f.id !== data.id);
+        saveFolders();
+        panel.remove();
+      });
+
+      handle.append(icon, nameEl, del);
+
+      const body = document.createElement('div');
+      body.className = 'panel-body';
+      body.textContent = 'open';
+      body.style.cursor = 'pointer';
+      body.addEventListener('click', () => navigate(childPath(data.name)));
+
+      const resizeHandle = document.createElement('div');
+      resizeHandle.className = 'resize-handle';
+
+      panel.append(handle, body, resizeHandle);
+      document.body.appendChild(panel);
+
+      attachDragHandle(handle, panel, () => syncFolderStore(panel));
+      attachResizeHandle(resizeHandle, panel, () => syncFolderStore(panel));
+      panel.addEventListener('mousedown', () => bringToFront(panel));
+    }
+
+    function startRename(panel, data, nameEl) {
+      const input = document.createElement('input');
+      input.className = 'folder-name-input';
+      input.value = data.name;
+      nameEl.replaceWith(input);
+      input.focus();
+      input.select();
+
+      function commit() {
+        const newName = input.value.trim() || data.name;
+        // Update stored path references if name changed
+        if (newName !== data.name) {
+          const oldChild = childPath(data.name);
+          const newChild = childPath(newName);
+          // Rename all localStorage keys under old path
+          renamePath(oldChild, newChild);
+          data.name = newName;
+          saveFolders();
+        }
+        nameEl.textContent = data.name;
+        input.replaceWith(nameEl);
+      }
+
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { input.value = data.name; input.blur(); }
+      });
+    }
+
+    function renamePath(oldPath, newPath) {
+      const keys = ['layout', 'notepad', 'checklist', 'images', 'folders'];
+      keys.forEach(k => {
+        const oldKey = oldPath ? `room-${k}:${oldPath}` : `room-${k}`;
+        const newKey = newPath ? `room-${k}:${newPath}` : `room-${k}`;
+        const val = localStorage.getItem(oldKey);
+        if (val !== null) {
+          localStorage.setItem(newKey, val);
+          localStorage.removeItem(oldKey);
+        }
+      });
+      // Also rename any deeper children
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes(`:${oldPath}/`)) {
+          const newKey = key.replace(`:${oldPath}/`, `:${newPath}/`);
+          localStorage.setItem(newKey, localStorage.getItem(key));
+          localStorage.removeItem(key);
+          i--; // length changed
+        }
+      }
+    }
+
+    document.getElementById('new-folder-btn').addEventListener('click', () => {
+      const id = 'folder-' + Date.now();
+      const data = {
+        id,
+        name: 'new folder',
+        x: Math.round(window.innerWidth / 2 - 90),
+        y: Math.round(window.innerHeight / 2 - 40),
+        w: 180,
+      };
+      folderStore.push(data);
+      saveFolders();
+      const panel = createFolderPanel(data);
+      // Immediately start rename
+      setTimeout(() => {
+        const nameEl = document.getElementById(id).querySelector('.folder-name');
+        if (nameEl) startRename(document.getElementById(id), data, nameEl);
+      }, 50);
+    });
+
+    // ─── Image drop ───────────────────────────────────────────────────────────
 
     let dragCounter = 0;
 
@@ -517,20 +722,12 @@
       e.preventDefault();
       dragCounter = 0;
       document.body.classList.remove('drag-over');
-
       const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
       files.forEach((file, i) => {
         const reader = new FileReader();
         reader.onload = ev => {
           const id = 'img-' + Date.now() + '-' + i;
-          const data = {
-            id,
-            src: ev.target.result,
-            x: e.clientX + i * 20,
-            y: e.clientY + i * 20,
-            w: 300,
-            h: 240,
-          };
+          const data = { id, src: ev.target.result, x: e.clientX + i * 20, y: e.clientY + i * 20, w: 300, h: 240 };
           imageStore.push(data);
           saveImages();
           createImagePanel(data);
@@ -539,33 +736,39 @@
       });
     });
 
-    // ─── Notepad ─────────────────────────────────────────────────────────────
+    // ─── Notepad ──────────────────────────────────────────────────────────────
 
-    const notepad   = document.getElementById('notepad');
+    const notepad    = document.getElementById('notepad');
     const saveStatus = document.getElementById('save-status');
     let saveTimer;
 
-    notepad.value = localStorage.getItem('room-notepad') || '';
+    function loadNotepad() {
+      notepad.value = localStorage.getItem(pathKey('notepad')) || '';
+    }
 
     notepad.addEventListener('input', () => {
       clearTimeout(saveTimer);
       saveStatus.textContent = '';
       saveTimer = setTimeout(() => {
-        localStorage.setItem('room-notepad', notepad.value);
+        localStorage.setItem(pathKey('notepad'), notepad.value);
         saveStatus.textContent = 'saved';
         setTimeout(() => saveStatus.textContent = '', 2000);
       }, 800);
     });
 
-    // ─── Checklist ───────────────────────────────────────────────────────────
+    // ─── Checklist ────────────────────────────────────────────────────────────
 
     const itemsList    = document.getElementById('checklist-items');
     const newItemInput = document.getElementById('new-item');
     const addBtn       = document.getElementById('add-btn');
 
-    let items = JSON.parse(localStorage.getItem('room-checklist') || '[]');
+    let items = [];
 
-    function saveItems() { localStorage.setItem('room-checklist', JSON.stringify(items)); }
+    function loadChecklist() {
+      items = JSON.parse(localStorage.getItem(pathKey('checklist')) || '[]');
+    }
+
+    function saveItems() { localStorage.setItem(pathKey('checklist'), JSON.stringify(items)); }
 
     function renderItems() {
       itemsList.innerHTML = '';
@@ -574,14 +777,11 @@
         if (item.done) li.classList.add('done');
 
         const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = item.done;
-        cb.id = `item-${i}`;
+        cb.type = 'checkbox'; cb.checked = item.done; cb.id = `item-${i}`;
         cb.addEventListener('change', () => { items[i].done = cb.checked; saveItems(); renderItems(); });
 
         const label = document.createElement('label');
-        label.htmlFor = `item-${i}`;
-        label.textContent = item.text;
+        label.htmlFor = `item-${i}`; label.textContent = item.text;
 
         const del = document.createElement('button');
         del.textContent = '×';
@@ -596,16 +796,42 @@
       const text = newItemInput.value.trim();
       if (!text) return;
       items.push({ text, done: false });
-      saveItems();
-      renderItems();
-      newItemInput.value = '';
-      newItemInput.focus();
+      saveItems(); renderItems();
+      newItemInput.value = ''; newItemInput.focus();
     }
 
     addBtn.addEventListener('click', addItem);
     newItemInput.addEventListener('keydown', e => { if (e.key === 'Enter') addItem(); });
 
-    renderItems();
+    // ─── Static panel drag/resize ─────────────────────────────────────────────
+
+    document.querySelectorAll('.panel:not(.image-panel):not(.folder-panel)').forEach(panel => {
+      attachDragHandle(panel.querySelector('.panel-handle'), panel);
+      attachResizeHandle(panel.querySelector('.resize-handle'), panel);
+      panel.addEventListener('mousedown', () => bringToFront(panel));
+    });
+
+    // ─── Init (runs on load and on navigation) ────────────────────────────────
+
+    function clearDynamicPanels() {
+      document.querySelectorAll('.image-panel, .folder-panel').forEach(p => p.remove());
+    }
+
+    function init() {
+      clearDynamicPanels();
+      undoStack.length = 0;
+      renderBreadcrumb();
+      applyLayout();
+      loadNotepad();
+      loadChecklist(); renderItems();
+      imageStore = loadImages();
+      imageStore.forEach(createImagePanel);
+      folderStore = loadFolders();
+      folderStore.forEach(createFolderPanel);
+    }
+
+    window.addEventListener('hashchange', init);
+    init();
   </script>
 
 </body>
