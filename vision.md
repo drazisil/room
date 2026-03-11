@@ -21,7 +21,7 @@ Each person has a room. It holds their things — links they saved, thoughts the
 
 The room is theirs. It reflects them without being a performance of them. Like a study or a workshop — you didn't arrange it for visitors, but if a visitor comes they get a sense of you from being in it.
 
-The room has a door. Open, closed, or knock first. Simple as that.
+The room has a door. Open or closed. Simple as that.
 
 The room has a guestbook. Someone passes through, leaves a note. Low commitment, low stakes. The door left slightly open.
 
