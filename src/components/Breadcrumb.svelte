@@ -1,7 +1,17 @@
 <script>
+  import { getAddress } from '../lib/address.js';
+
   let { path, navigate } = $props();
 
+  const address = getAddress();
   let parts = $derived(path ? path.split('/') : []);
+  let copied = $state(false);
+
+  function copyAddress() {
+    navigator.clipboard.writeText(address);
+    copied = true;
+    setTimeout(() => copied = false, 1500);
+  }
 </script>
 
 <nav id="breadcrumb">
@@ -9,10 +19,13 @@
     class="crumb"
     class:current={parts.length === 0}
     onclick={parts.length > 0 ? () => navigate('') : undefined}
-    role={parts.length > 0 ? 'button' : undefined}
-    tabindex={parts.length > 0 ? 0 : undefined}
-    onkeydown={parts.length > 0 ? (e) => { if (e.key === 'Enter') navigate(''); } : undefined}
-  >the room</span>
+  >{address}</span>
+
+  {#if parts.length === 0}
+    <button class="copy-address" onclick={copyAddress} title="copy address">
+      {copied ? 'copied' : '·'}
+    </button>
+  {/if}
 
   {#each parts as part, i}
     <span class="sep"> › </span>
@@ -20,13 +33,7 @@
       <span class="crumb current">{part}</span>
     {:else}
       {@const crumbPath = parts.slice(0, i + 1).join('/')}
-      <span
-        class="crumb"
-        onclick={() => navigate(crumbPath)}
-        role="button"
-        tabindex="0"
-        onkeydown={(e) => { if (e.key === 'Enter') navigate(crumbPath); }}
-      >{part}</span>
+      <span class="crumb" onclick={() => navigate(crumbPath)}>{crumbPath}</span>
     {/if}
   {/each}
 </nav>

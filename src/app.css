@@ -57,6 +57,14 @@ button:hover { color: var(--ink); }
 #breadcrumb .crumb.current { color: var(--ink); cursor: default; }
 #breadcrumb .sep { color: var(--warm); user-select: none; }
 
+.copy-address {
+  font-size: 0.7rem;
+  color: var(--faint);
+  margin-left: 0.3rem;
+  letter-spacing: 0;
+}
+.copy-address:hover { color: var(--ink); }
+
 #topbar-actions {
   display: flex; gap: 1rem;
   font-size: 0.75rem; letter-spacing: 0.08em;

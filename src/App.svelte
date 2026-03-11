@@ -23,6 +23,7 @@
   const { notepad: notepadPanels, checklist: checklistPanels, bookmarks: bookmarksPanels, image: imagePanels, folder: folderPanels } = panels;
 
   import { migrate, gatherRoom, roomHasData, clearRoomData, KINDS, pathKey } from './lib/storage.js';
+  import { getAddress } from './lib/address.js';
 
   // Context menu state
   let ctxMenu = $state(null); // null or { x, y }
@@ -37,19 +38,36 @@
   // Current path as reactive value
   let path = $state('');
 
-  function getHashPath() {
-    return decodeURIComponent(location.hash.slice(1)) || '';
+  // Address slug is the first URL segment — identifies this room
+  function addressSlug() {
+    return getAddress().toLowerCase().replace(/\s+/g, '-');
+  }
+
+  function urlToPath(pathname) {
+    const slug = addressSlug();
+    if (pathname === '/' + slug) return '';
+    if (pathname.startsWith('/' + slug + '/')) return pathname.slice(slug.length + 2);
+    return ''; // anything else → root
+  }
+
+  function pathToUrl(p) {
+    const slug = addressSlug();
+    return p ? `/${slug}/${p}` : `/${slug}`;
   }
 
   function navigate(newPath) {
+    history.pushState({}, '', pathToUrl(newPath));
     currentPath.set(newPath);
-    location.hash = encodeURIComponent(newPath);
     path = newPath;
     loadAll(newPath);
   }
 
   function init() {
-    const p = getHashPath();
+    const p = urlToPath(window.location.pathname);
+    // Canonicalize URL on first load
+    if (window.location.pathname === '/') {
+      history.replaceState({}, '', pathToUrl(''));
+    }
     currentPath.set(p);
     path = p;
     loadAll(p);
@@ -59,9 +77,9 @@
     migrate();
     init();
 
-    window.addEventListener('hashchange', init);
+    window.addEventListener('popstate', init);
     return () => {
-      window.removeEventListener('hashchange', init);
+      window.removeEventListener('popstate', init);
     };
   });
 
