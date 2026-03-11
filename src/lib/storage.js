@@ -1,15 +1,16 @@
+import { getSlug } from './address.js';
+
 export const KINDS = ['notepad', 'checklist', 'bookmarks', 'image', 'folder'];
 
+// All keys namespaced by address slug: "{slug}:store-{kind}" or "{slug}:store-{kind}:{path}"
 export function pathKey(kind, path) {
-  return path ? `room-store-${kind}:${path}` : `room-store-${kind}`;
+  const slug = getSlug();
+  return path ? `${slug}:store-${kind}:${path}` : `${slug}:store-${kind}`;
 }
 
 export function loadStore(kind, path) {
-  try {
-    return JSON.parse(localStorage.getItem(pathKey(kind, path))) || [];
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(localStorage.getItem(pathKey(kind, path))) || []; }
+  catch { return []; }
 }
 
 export function saveStore(kind, path, data) {
@@ -17,7 +18,10 @@ export function saveStore(kind, path, data) {
 }
 
 export function migrate() {
-  const map = {
+  const slug = getSlug();
+
+  // Step 1: old plural keys → room-store-* format
+  const pluralMap = {
     notepads: 'store-notepad',
     checklists: 'store-checklist',
     images: 'store-image',
@@ -26,30 +30,38 @@ export function migrate() {
   for (let i = localStorage.length - 1; i >= 0; i--) {
     const key = localStorage.key(i);
     if (!key) continue;
-    for (const [oldSuffix, newSuffix] of Object.entries(map)) {
+    for (const [oldSuffix, newSuffix] of Object.entries(pluralMap)) {
       const oldPrefix = 'room-' + oldSuffix;
       if (key === oldPrefix || key.startsWith(oldPrefix + ':')) {
         const newKey = key.replace('room-' + oldSuffix, 'room-' + newSuffix);
-        if (!localStorage.getItem(newKey)) {
-          localStorage.setItem(newKey, localStorage.getItem(key));
-        }
+        if (!localStorage.getItem(newKey)) localStorage.setItem(newKey, localStorage.getItem(key));
         localStorage.removeItem(key);
       }
     }
   }
+
+  // Step 2: room-store-* → {slug}:store-*
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith('room-store-')) continue;
+    const newKey = key.replace('room-store-', `${slug}:store-`);
+    if (!localStorage.getItem(newKey)) localStorage.setItem(newKey, localStorage.getItem(key));
+    localStorage.removeItem(key);
+  }
 }
 
 export function gatherRoom(basePath) {
+  const slug = getSlug();
+  const prefix = `${slug}:store-`;
   const rooms = {};
 
   function collectPath(path) {
     const rel = basePath ? path.slice(basePath.length).replace(/^\//, '') : path;
+    if (rel in rooms) return;
     const entry = {};
     KINDS.forEach(kind => {
       const val = localStorage.getItem(pathKey(kind, path));
-      if (val) {
-        try { entry[kind] = JSON.parse(val); } catch {}
-      }
+      if (val) { try { entry[kind] = JSON.parse(val); } catch {} }
     });
     if (Object.keys(entry).length) rooms[rel] = entry;
   }
@@ -58,12 +70,13 @@ export function gatherRoom(basePath) {
 
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (!key) continue;
-    if (!key.startsWith('room-store-')) continue;
-    const colonIdx = key.indexOf(':');
-    if (colonIdx === -1) continue;
-    const path = key.slice(colonIdx + 1);
-    if (basePath ? (path === basePath || path.startsWith(basePath + '/')) : true) {
+    if (!key || !key.startsWith(prefix)) continue;
+    // Extract internal path from key: {slug}:store-{kind}:{path}
+    const rest = key.slice(prefix.length); // e.g. "notepad:projects/web"
+    const colonIdx = rest.indexOf(':');
+    if (colonIdx === -1) continue; // no sub-path, already collected at root
+    const path = rest.slice(colonIdx + 1);
+    if (!basePath || path === basePath || path.startsWith(basePath + '/')) {
       collectPath(path);
     }
   }
@@ -73,18 +86,20 @@ export function gatherRoom(basePath) {
 
 export function roomHasData(basePath) {
   return KINDS.some(kind => {
-    const key = basePath ? `room-store-${kind}:${basePath}` : `room-store-${kind}`;
-    const val = localStorage.getItem(key);
-    try { return val && JSON.parse(val).length > 0; } catch { return false; }
+    try { return JSON.parse(localStorage.getItem(pathKey(kind, basePath)) || '[]').length > 0; }
+    catch { return false; }
   });
 }
 
 export function clearRoomData(basePath) {
+  const slug = getSlug();
+  const prefix = `${slug}:store-`;
   for (let i = localStorage.length - 1; i >= 0; i--) {
     const key = localStorage.key(i);
-    if (!key || !key.startsWith('room-store-')) continue;
-    const colonIdx = key.indexOf(':');
-    const path = colonIdx === -1 ? '' : key.slice(colonIdx + 1);
+    if (!key || !key.startsWith(prefix)) continue;
+    const rest = key.slice(prefix.length);
+    const colonIdx = rest.indexOf(':');
+    const path = colonIdx === -1 ? '' : rest.slice(colonIdx + 1);
     if (path === basePath || path.startsWith(basePath ? basePath + '/' : '')) {
       localStorage.removeItem(key);
     }
@@ -92,8 +107,10 @@ export function clearRoomData(basePath) {
 }
 
 export function renamePath(oldPath, newPath) {
-  ['store-notepad', 'store-checklist', 'store-bookmarks', 'store-image', 'store-folder'].forEach(k => {
-    const ok = `room-${k}:${oldPath}`, nk = `room-${k}:${newPath}`;
+  const slug = getSlug();
+  KINDS.forEach(kind => {
+    const ok = `${slug}:store-${kind}:${oldPath}`;
+    const nk = `${slug}:store-${kind}:${newPath}`;
     const v = localStorage.getItem(ok);
     if (v !== null) { localStorage.setItem(nk, v); localStorage.removeItem(ok); }
   });

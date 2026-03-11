@@ -23,7 +23,7 @@
   const { notepad: notepadPanels, checklist: checklistPanels, bookmarks: bookmarksPanels, image: imagePanels, folder: folderPanels } = panels;
 
   import { migrate, gatherRoom, roomHasData, clearRoomData, KINDS, pathKey } from './lib/storage.js';
-  import { getAddress } from './lib/address.js';
+  import { getAddress, getRoomId } from './lib/address.js';
 
   // Context menu state
   let ctxMenu = $state(null); // null or { x, y }
@@ -74,6 +74,7 @@
   }
 
   onMount(() => {
+    getRoomId(); // ensure ID exists before any data is written
     migrate();
     init();
 
@@ -188,7 +189,13 @@
   function saveRoom() {
     const basePath = get(currentPath);
     const rooms = gatherRoom(basePath);
-    const payload = { version: 1, exported: new Date().toISOString().slice(0, 10), rooms };
+    const payload = {
+      version: 2,
+      exported: new Date().toISOString().slice(0, 10),
+      address: getAddress(),
+      id: getRoomId(),
+      rooms,
+    };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

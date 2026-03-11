@@ -45,3 +45,16 @@ export function getAddress() {
   }
   return addr;
 }
+
+export function getSlug() {
+  return getAddress().toLowerCase().replace(/\s+/g, '-');
+}
+
+export function getRoomId() {
+  let id = localStorage.getItem('room-id');
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem('room-id', id);
+  }
+  return id;
+}
