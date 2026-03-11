@@ -90,7 +90,7 @@ How do you keep the culture once it grows past the people who sought this out de
 
 What is the address? How does it feel to have one?
 
-What does the guestbook look like that invites the right kind of note?
+What does the guestbook look like that invites the right kind of note? (Text only. No links — a note, not a billboard.)
 
 How small is small enough to protect the thing you're protecting?
 
