@@ -218,7 +218,7 @@
     .folder-panel .panel-body:hover { color: var(--ink); }
 
     /* ── Bookmarks ── */
-    .bookmark-list { list-style: none; }
+    .bookmark-list { list-style: none; overflow-y: auto; flex: 1; }
 
     .bookmark-list li {
       display: flex; align-items: baseline; gap: 0.5rem;
@@ -703,8 +703,61 @@
       const handle = makeHandle('bookmarks', () => deletePanel(panel, 'bookmarks'));
       attachDragHandle(handle, panel);
 
+      // Import button
+      const importBtn = document.createElement('button');
+      importBtn.textContent = 'import';
+      importBtn.title = 'import browser bookmarks (.html)';
+      importBtn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file'; input.accept = '.html,.htm';
+        input.addEventListener('change', () => {
+          const file = input.files[0]; if (!file) return;
+          const reader = new FileReader();
+          reader.onload = ev => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(ev.target.result, 'text/html');
+            const items = [...doc.querySelectorAll('a[href]')]
+              .filter(a => /^https?:\/\//i.test(a.getAttribute('href')))
+              .map(a => ({ url: a.getAttribute('href'), title: a.textContent.trim() || a.getAttribute('href') }));
+            if (!items.length) return;
+            const newData = { id: 'bookmarks-' + Date.now(), kind: 'bookmarks', items, x: data.x + 20, y: data.y + 20, w: data.w, h: 340 };
+            stores.bookmarks.push(newData);
+            saveStore('bookmarks');
+            createBookmarksPanel(newData);
+            bringToFront(document.getElementById(newData.id));
+          };
+          reader.readAsText(file);
+        });
+        input.click();
+      });
+
+      // Export button
+      const exportBtn = document.createElement('button');
+      exportBtn.textContent = 'export';
+      exportBtn.title = 'export as browser bookmarks (.html)';
+      exportBtn.addEventListener('click', () => {
+        const lines = [
+          '<!DOCTYPE NETSCAPE-Bookmark-file-1>',
+          '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">',
+          '<TITLE>Bookmarks</TITLE>',
+          '<H1>Bookmarks</H1>',
+          '<DL><p>',
+          ...data.items.map(i => `  <DT><A HREF="${i.url}">${i.title}</A>`),
+          '</DL><p>',
+        ];
+        const blob = new Blob([lines.join('\n')], { type: 'text/html' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'bookmarks.html';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+
+      handle.append(importBtn, exportBtn);
+
       const body = document.createElement('div');
       body.className = 'panel-body';
+      body.style.cssText = 'display:flex;flex-direction:column;overflow:hidden;';
 
       const ul = document.createElement('ul');
       ul.className = 'bookmark-list';
