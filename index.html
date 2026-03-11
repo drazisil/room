@@ -25,6 +25,14 @@
       line-height: 1.7;
     }
 
+    button {
+      appearance: none; -webkit-appearance: none;
+      background: transparent; border: none;
+      font-family: inherit; font-size: 0.85rem;
+      color: var(--faint); cursor: pointer; padding: 0;
+    }
+    button:hover { color: var(--ink); }
+
     /* ── Top bar ── */
     #topbar {
       position: fixed;
@@ -32,6 +40,7 @@
       height: 2.4rem;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       padding: 0 1.5rem;
       z-index: 100;
       pointer-events: none;
@@ -54,6 +63,17 @@
     #breadcrumb .crumb:hover { color: var(--ink); }
     #breadcrumb .crumb.current { color: var(--ink); cursor: default; }
     #breadcrumb .sep { color: var(--warm); user-select: none; }
+
+    #topbar-actions {
+      display: flex; gap: 1rem;
+      font-size: 0.75rem; letter-spacing: 0.08em;
+      pointer-events: all;
+    }
+
+    #topbar-actions button {
+      color: var(--ink); font-size: 0.75rem; letter-spacing: 0.08em;
+    }
+    #topbar-actions button:hover { color: #fff; }
 
     /* ── Context menu ── */
     #ctx-menu {
@@ -218,7 +238,7 @@
     .folder-panel .panel-body:hover { color: var(--ink); }
 
     /* ── Bookmarks ── */
-    .bookmark-list { list-style: none; overflow-y: auto; flex: 1; }
+    .bookmark-list { list-style: none; overflow-y: scroll; flex: 1; padding-right: 0.3rem; }
 
     .bookmark-list li {
       display: flex; align-items: baseline; gap: 0.5rem;
@@ -264,6 +284,7 @@
 
   <div id="topbar">
     <nav id="breadcrumb"></nav>
+    <div id="topbar-actions"></div>
   </div>
 
   <div id="ctx-menu">
@@ -945,6 +966,173 @@
         reader.readAsDataURL(file);
       });
     });
+
+    // ─── Save / Load room ─────────────────────────────────────────────────────
+
+    const KINDS = ['notepad', 'checklist', 'bookmarks', 'image', 'folder'];
+
+    function gatherRoom(basePath) {
+      // Collect all localStorage data for basePath and its children
+      const rooms = {};
+
+      function storeKeyForPath(kind, path) {
+        return path ? `room-store-${kind}:${path}` : `room-store-${kind}`;
+      }
+
+      function collectPath(path) {
+        const rel = basePath ? path.slice(basePath.length).replace(/^\//, '') : path;
+        const entry = {};
+        KINDS.forEach(kind => {
+          const val = localStorage.getItem(storeKeyForPath(kind, path));
+          if (val) { try { entry[kind] = JSON.parse(val); } catch {} }
+        });
+        if (Object.keys(entry).length) rooms[rel] = entry;
+      }
+
+      // Collect basePath itself
+      collectPath(basePath);
+
+      // Collect all children
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        const prefix = basePath ? `room-store-` : `room-store-`;
+        if (!key.startsWith('room-store-')) continue;
+        // Extract path from key: room-store-{kind}:{path}
+        const colonIdx = key.indexOf(':');
+        if (colonIdx === -1) continue;
+        const path = key.slice(colonIdx + 1);
+        if (basePath ? (path === basePath || path.startsWith(basePath + '/')) : true) {
+          collectPath(path);
+        }
+      }
+
+      return rooms;
+    }
+
+    function saveRoom() {
+      const basePath = currentPath();
+      const rooms = gatherRoom(basePath);
+      const payload = { version: 1, exported: new Date().toISOString().slice(0, 10), rooms };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      const name = basePath ? basePath.split('/').pop() : 'room';
+      a.download = `${name}.room.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function roomHasData(basePath) {
+      return KINDS.some(kind => {
+        const key = basePath ? `room-store-${kind}:${basePath}` : `room-store-${kind}`;
+        const val = localStorage.getItem(key);
+        try { return val && JSON.parse(val).length > 0; } catch { return false; }
+      });
+    }
+
+    function clearRoomData(basePath) {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith('room-store-')) continue;
+        const colonIdx = key.indexOf(':');
+        const path = colonIdx === -1 ? '' : key.slice(colonIdx + 1);
+        if (path === basePath || path.startsWith(basePath ? basePath + '/' : '')) {
+          localStorage.removeItem(key);
+        }
+      }
+    }
+
+    function applyRoomPayload(payload, replace) {
+      const basePath = currentPath();
+      if (replace) clearRoomData(basePath);
+      Object.entries(payload.rooms).forEach(([rel, entry]) => {
+        const targetPath = rel ? (basePath ? `${basePath}/${rel}` : rel) : basePath;
+        KINDS.forEach(kind => {
+          if (!entry[kind]) return;
+          const key = targetPath ? `room-store-${kind}:${targetPath}` : `room-store-${kind}`;
+          if (replace) {
+            localStorage.setItem(key, JSON.stringify(entry[kind]));
+          } else {
+            // Merge: append items, avoid duplicate ids
+            let existing = [];
+            try { existing = JSON.parse(localStorage.getItem(key) || '[]'); } catch {}
+            const existingIds = new Set(existing.map(e => e.id));
+            const merged = [...existing, ...entry[kind].filter(e => !existingIds.has(e.id))];
+            localStorage.setItem(key, JSON.stringify(merged));
+          }
+        });
+      });
+      init();
+    }
+
+    function promptMergeOrReplace(payload) {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
+
+      const box = document.createElement('div');
+      box.style.cssText = 'background:var(--surface);border:1px solid var(--faint);padding:1.5rem 2rem;display:flex;flex-direction:column;gap:1rem;min-width:260px;';
+
+      const msg = document.createElement('p');
+      msg.style.cssText = 'font-size:0.85rem;color:var(--ink);line-height:1.5;';
+      msg.textContent = 'This room already has content. Replace it or merge with it?';
+
+      const btns = document.createElement('div');
+      btns.style.cssText = 'display:flex;gap:1rem;justify-content:flex-end;';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'cancel';
+      cancelBtn.style.cssText = 'font-size:0.8rem;';
+      cancelBtn.addEventListener('click', () => overlay.remove());
+
+      const mergeBtn = document.createElement('button');
+      mergeBtn.textContent = 'merge';
+      mergeBtn.style.cssText = 'font-size:0.8rem;';
+      mergeBtn.addEventListener('click', () => { overlay.remove(); applyRoomPayload(payload, false); });
+
+      const replaceBtn = document.createElement('button');
+      replaceBtn.textContent = 'replace';
+      replaceBtn.style.cssText = 'font-size:0.8rem;color:var(--paper);background:var(--ink);padding:0.2rem 0.6rem;';
+      replaceBtn.addEventListener('click', () => { overlay.remove(); applyRoomPayload(payload, true); });
+
+      btns.append(cancelBtn, mergeBtn, replaceBtn);
+      box.append(msg, btns);
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+    }
+
+    function loadRoom() {
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = '.json';
+      input.addEventListener('change', () => {
+        const file = input.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          let payload;
+          try { payload = JSON.parse(ev.target.result); } catch { alert('Invalid file.'); return; }
+          if (!payload.rooms) { alert('Not a room file.'); return; }
+          if (roomHasData(currentPath())) {
+            promptMergeOrReplace(payload);
+          } else {
+            applyRoomPayload(payload, true);
+          }
+        };
+        reader.readAsText(file);
+      });
+      input.click();
+    }
+
+    // Wire up topbar buttons
+    (function() {
+      const actions = document.getElementById('topbar-actions');
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = 'save room';
+      saveBtn.addEventListener('click', saveRoom);
+      const loadBtn = document.createElement('button');
+      loadBtn.textContent = 'load room';
+      loadBtn.addEventListener('click', loadRoom);
+      actions.append(saveBtn, loadBtn);
+    })();
 
     // ─── Init ─────────────────────────────────────────────────────────────────
 
