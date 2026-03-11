@@ -238,7 +238,15 @@
     .folder-panel .panel-body:hover { color: var(--ink); }
 
     /* ── Bookmarks ── */
-    .bookmark-list { list-style: none; overflow-y: scroll; flex: 1; padding-right: 0.3rem; }
+    .bookmark-list {
+      list-style: none; overflow-y: scroll; flex: 1; padding-right: 0.3rem;
+      scrollbar-color: var(--faint) var(--warm);
+      scrollbar-width: thin;
+    }
+    .bookmark-list::-webkit-scrollbar { width: 6px; }
+    .bookmark-list::-webkit-scrollbar-track { background: var(--warm); }
+    .bookmark-list::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 3px; }
+    .bookmark-list::-webkit-scrollbar-thumb:hover { background: var(--ink); }
 
     .bookmark-list li {
       display: flex; align-items: baseline; gap: 0.5rem;
@@ -785,7 +793,7 @@
 
       function saveBookmarks() {
         const entry = stores.bookmarks.find(e => e.id === data.id);
-        if (entry) { entry.items = data.items; saveStore('bookmarks'); }
+        if (entry) { entry.items = data.items; entry.scrollTop = ul.scrollTop; saveStore('bookmarks'); }
       }
 
       function renderBookmarks() {
@@ -882,8 +890,28 @@
 
       bottomRow.append(titleInput, addBtn);
       row.append(urlInput, bottomRow);
+      const scrollSaved = document.createElement('span');
+      scrollSaved.style.cssText = 'position:absolute;bottom:1.4rem;right:1.4rem;font-size:0.7rem;color:var(--ink);transition:opacity 0.3s;opacity:0;pointer-events:none;z-index:3;';
+      panel.append(scrollSaved);
+
       body.append(ul, row);
       renderBookmarks();
+      requestAnimationFrame(() => { if (data.scrollTop) ul.scrollTop = data.scrollTop; });
+
+      let scrollTimer;
+      ul.addEventListener('scroll', () => {
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          const entry = stores.bookmarks.find(e => e.id === data.id);
+          if (entry) {
+            entry.scrollTop = ul.scrollTop;
+            saveStore('bookmarks');
+            scrollSaved.textContent = 'position saved';
+            scrollSaved.style.opacity = '1';
+            setTimeout(() => scrollSaved.style.opacity = '0', 1500);
+          }
+        }, 400);
+      });
 
       panel.append(handle, body, makeResizeHandle(panel));
       document.body.appendChild(panel);
