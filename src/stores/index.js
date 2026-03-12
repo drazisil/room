@@ -1,5 +1,5 @@
 import { writable, get } from 'svelte/store';
-import { loadStore, saveStore, KINDS } from '../lib/storage.js';
+import { loadRoom, loadStore, saveStore, KINDS } from '../lib/storage.js';
 
 export const currentPath = writable('');
 export const zCounter = writable(10);
@@ -8,7 +8,8 @@ export const undoStack = writable([]);
 // One writable store per panel kind
 export const panels = Object.fromEntries(KINDS.map(k => [k, writable([])]));
 
-export function loadAll(path) {
+export async function loadAll(path) {
+  await loadRoom();
   KINDS.forEach(kind => panels[kind].set(loadStore(kind, path)));
   undoStack.set([]);
 }

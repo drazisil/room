@@ -1,81 +1,111 @@
-import { getSlug } from './address.js';
-
 export const KINDS = ['notepad', 'checklist', 'bookmarks', 'image', 'folder'];
 
-// Current slug is set by the router from the URL — do not read from localStorage here.
+// Active slug set by the router from the URL.
 let _currentSlug = null;
 
+// Full room object cached from the server.
+// Shape: { address?, id?, ownerVerifier?, store: { [kind]: { [path]: [...panels] } } }
+let _roomCache = null;
+let _loadedSlug = null; // slug currently reflected in _roomCache
+
 export function setCurrentSlug(slug) {
-  _currentSlug = slug;
+  if (slug !== _currentSlug) {
+    _currentSlug = slug;
+    // Don't clear cache here — loadRoom() will handle it when slug differs from _loadedSlug
+  }
 }
 
-function activeSlug() {
-  return _currentSlug || getSlug();
+// Load the full room from the server. Skips fetch if the slug hasn't changed.
+export async function loadRoom() {
+  const slug = _currentSlug;
+  if (!slug) return;
+  if (slug === _loadedSlug && _roomCache) return;
+
+  try {
+    const resp = await fetch(`/api/rooms/${slug}`);
+    if (resp.ok) {
+      _roomCache = await resp.json();
+    } else if (resp.status === 404) {
+      _roomCache = { store: {} };
+    } else {
+      throw new Error(`server returned ${resp.status}`);
+    }
+  } catch (err) {
+    console.error('[storage] loadRoom failed:', err);
+    if (!_roomCache) _roomCache = { store: {} };
+  }
+
+  _loadedSlug = slug;
+
+  // Ensure room has a stable ID
+  if (!_roomCache.id) {
+    _roomCache.id = globalThis.crypto.randomUUID();
+    patchRoom({ id: _roomCache.id });
+  }
 }
 
-// Human-readable address stored per slug so we can display it without a global.
-export function setAddressForSlug(slug, address) {
-  localStorage.setItem(`${slug}:address`, address);
+// PATCH the server with a partial update. Fire-and-forget — callers don't await.
+function patchRoom(updates) {
+  const slug = _currentSlug;
+  if (!slug) return;
+  fetch(`/api/rooms/${slug}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  }).catch(err => console.error('[storage] patchRoom failed:', err));
 }
+
+// --- Panel store operations ---
+
+export function loadStore(kind, path = '') {
+  return _roomCache?.store?.[kind]?.[path] ?? [];
+}
+
+export function saveStore(kind, path = '', data) {
+  if (!_roomCache) _roomCache = { store: {} };
+  if (!_roomCache.store[kind]) _roomCache.store[kind] = {};
+  _roomCache.store[kind][path] = data;
+  patchRoom({ store: { [kind]: { [path]: data } } });
+}
+
+// --- Room metadata ---
 
 export function getAddressForSlug(slug) {
-  const stored = localStorage.getItem(`${slug}:address`);
-  if (stored) return stored;
+  if (_roomCache?.address) return _roomCache.address;
   // Derive from slug as fallback: "27-maple-lane" → "27 Maple Lane"
   return slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-// All keys namespaced by address slug: "{slug}:store-{kind}" or "{slug}:store-{kind}:{path}"
-export function pathKey(kind, path) {
-  const slug = activeSlug();
-  return path ? `${slug}:store-${kind}:${path}` : `${slug}:store-${kind}`;
+export function setAddressForSlug(slug, address) {
+  if (!_roomCache) _roomCache = { store: {} };
+  _currentSlug = slug;
+  _roomCache.address = address;
+  patchRoom({ address });
 }
 
-export function loadStore(kind, path) {
-  try { return JSON.parse(localStorage.getItem(pathKey(kind, path))) || []; }
-  catch { return []; }
+export function getRoomId() {
+  return _roomCache?.id ?? null;
 }
 
-export function saveStore(kind, path, data) {
-  localStorage.setItem(pathKey(kind, path), JSON.stringify(data));
+// --- Owner verifier (for passphrase ownership, stored server-side) ---
+
+export function getOwnerVerifier() {
+  return _roomCache?.ownerVerifier ?? null;
 }
 
-export function migrate() {
-  const slug = activeSlug();
-
-  // Step 1: old plural keys → room-store-* format
-  const pluralMap = {
-    notepads: 'store-notepad',
-    checklists: 'store-checklist',
-    images: 'store-image',
-    folders: 'store-folder',
-  };
-  for (let i = localStorage.length - 1; i >= 0; i--) {
-    const key = localStorage.key(i);
-    if (!key) continue;
-    for (const [oldSuffix, newSuffix] of Object.entries(pluralMap)) {
-      const oldPrefix = 'room-' + oldSuffix;
-      if (key === oldPrefix || key.startsWith(oldPrefix + ':')) {
-        const newKey = key.replace('room-' + oldSuffix, 'room-' + newSuffix);
-        if (!localStorage.getItem(newKey)) localStorage.setItem(newKey, localStorage.getItem(key));
-        localStorage.removeItem(key);
-      }
-    }
-  }
-
-  // Step 2: room-store-* → {slug}:store-*
-  for (let i = localStorage.length - 1; i >= 0; i--) {
-    const key = localStorage.key(i);
-    if (!key || !key.startsWith('room-store-')) continue;
-    const newKey = key.replace('room-store-', `${slug}:store-`);
-    if (!localStorage.getItem(newKey)) localStorage.setItem(newKey, localStorage.getItem(key));
-    localStorage.removeItem(key);
-  }
+export function storeOwnerVerifier(slug, verifier) {
+  if (!_roomCache) _roomCache = { store: {} };
+  _currentSlug = slug;
+  _loadedSlug = slug;
+  _roomCache.ownerVerifier = verifier;
+  patchRoom({ ownerVerifier: verifier });
 }
 
+// --- Export / import helpers ---
+
+// Returns the export-format rooms object for all paths at or under basePath.
 export function gatherRoom(basePath) {
-  const slug = activeSlug();
-  const prefix = `${slug}:store-`;
+  const store = _roomCache?.store ?? {};
   const rooms = {};
 
   function collectPath(path) {
@@ -83,22 +113,17 @@ export function gatherRoom(basePath) {
     if (rel in rooms) return;
     const entry = {};
     KINDS.forEach(kind => {
-      const val = localStorage.getItem(pathKey(kind, path));
-      if (val) { try { entry[kind] = JSON.parse(val); } catch {} }
+      const panels = store[kind]?.[path];
+      if (Array.isArray(panels) && panels.length) entry[kind] = panels;
     });
     if (Object.keys(entry).length) rooms[rel] = entry;
   }
 
   collectPath(basePath);
 
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key || !key.startsWith(prefix)) continue;
-    // Extract internal path from key: {slug}:store-{kind}:{path}
-    const rest = key.slice(prefix.length); // e.g. "notepad:projects/web"
-    const colonIdx = rest.indexOf(':');
-    if (colonIdx === -1) continue; // no sub-path, already collected at root
-    const path = rest.slice(colonIdx + 1);
+  const allPaths = new Set();
+  KINDS.forEach(kind => Object.keys(store[kind] ?? {}).forEach(p => allPaths.add(p)));
+  for (const path of allPaths) {
     if (!basePath || path === basePath || path.startsWith(basePath + '/')) {
       collectPath(path);
     }
@@ -108,41 +133,96 @@ export function gatherRoom(basePath) {
 }
 
 export function roomHasData(basePath) {
+  const store = _roomCache?.store ?? {};
   return KINDS.some(kind => {
-    try { return JSON.parse(localStorage.getItem(pathKey(kind, basePath)) || '[]').length > 0; }
-    catch { return false; }
+    const panels = store[kind]?.[basePath];
+    return Array.isArray(panels) && panels.length > 0;
   });
 }
 
+// Clear all store data at or under basePath, then sync to server.
 export function clearRoomData(basePath) {
-  const slug = activeSlug();
-  const prefix = `${slug}:store-`;
-  for (let i = localStorage.length - 1; i >= 0; i--) {
-    const key = localStorage.key(i);
-    if (!key || !key.startsWith(prefix)) continue;
-    const rest = key.slice(prefix.length);
-    const colonIdx = rest.indexOf(':');
-    const path = colonIdx === -1 ? '' : rest.slice(colonIdx + 1);
-    if (path === basePath || path.startsWith(basePath ? basePath + '/' : '')) {
-      localStorage.removeItem(key);
-    }
-  }
+  if (!_roomCache?.store) return;
+  const storePatch = {};
+  KINDS.forEach(kind => {
+    const kindStore = _roomCache.store[kind];
+    if (!kindStore) return;
+    Object.keys(kindStore).forEach(path => {
+      if (path === (basePath ?? '') || (basePath && path.startsWith(basePath + '/'))) {
+        kindStore[path] = [];
+        if (!storePatch[kind]) storePatch[kind] = {};
+        storePatch[kind][path] = [];
+      }
+    });
+  });
+  if (Object.keys(storePatch).length) patchRoom({ store: storePatch });
 }
 
+// Rename a path (and all sub-paths) in the cache, then sync to server.
 export function renamePath(oldPath, newPath) {
-  const slug = activeSlug();
+  if (!_roomCache?.store) return;
+  const storePatch = {};
   KINDS.forEach(kind => {
-    const ok = `${slug}:store-${kind}:${oldPath}`;
-    const nk = `${slug}:store-${kind}:${newPath}`;
-    const v = localStorage.getItem(ok);
-    if (v !== null) { localStorage.setItem(nk, v); localStorage.removeItem(ok); }
+    const kindStore = _roomCache.store[kind];
+    if (!kindStore) return;
+    Object.keys(kindStore).forEach(path => {
+      let newKey = null;
+      if (path === oldPath) {
+        newKey = newPath;
+      } else if (path.startsWith(oldPath + '/')) {
+        newKey = newPath + path.slice(oldPath.length);
+      }
+      if (newKey !== null) {
+        kindStore[newKey] = kindStore[path];
+        delete kindStore[path];
+        if (!storePatch[kind]) storePatch[kind] = {};
+        storePatch[kind][newKey] = kindStore[newKey];
+        storePatch[kind][path] = []; // clear old path on server
+      }
+    });
   });
-  for (let i = localStorage.length - 1; i >= 0; i--) {
-    const key = localStorage.key(i);
-    if (key && key.includes(`:${oldPath}/`)) {
-      const nk = key.replace(`:${oldPath}/`, `:${newPath}/`);
-      localStorage.setItem(nk, localStorage.getItem(key));
-      localStorage.removeItem(key);
+  if (Object.keys(storePatch).length) patchRoom({ store: storePatch });
+}
+
+// Apply an imported payload.rooms object into the cache, then sync.
+// replace=true clears existing data at basePath first.
+export function applyRoomData(roomsData, basePath, replace) {
+  if (!_roomCache) _roomCache = { store: {} };
+
+  if (replace) {
+    KINDS.forEach(kind => {
+      const kindStore = _roomCache.store[kind];
+      if (!kindStore) return;
+      Object.keys(kindStore).forEach(path => {
+        if (path === (basePath ?? '') || (basePath && path.startsWith(basePath + '/'))) {
+          delete kindStore[path];
+        }
+      });
+    });
+  }
+
+  for (const [rel, entry] of Object.entries(roomsData)) {
+    const targetPath = rel
+      ? (basePath ? `${basePath}/${rel}` : rel)
+      : (basePath ?? '');
+    for (const kind of KINDS) {
+      if (!entry[kind]) continue;
+      if (!_roomCache.store[kind]) _roomCache.store[kind] = {};
+      if (replace) {
+        _roomCache.store[kind][targetPath] = entry[kind];
+      } else {
+        const existing = _roomCache.store[kind][targetPath] ?? [];
+        const existingIds = new Set(existing.map(e => e.id));
+        _roomCache.store[kind][targetPath] = [
+          ...existing,
+          ...entry[kind].filter(e => !existingIds.has(e.id)),
+        ];
+      }
     }
   }
+
+  patchRoom({ store: _roomCache.store });
 }
+
+// No-op: migration was for old localStorage key formats, not needed with server storage.
+export function migrate() {}

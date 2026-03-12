@@ -1,3 +1,5 @@
+import { getOwnerVerifier, storeOwnerVerifier as persistVerifier } from './storage.js';
+
 const PBKDF2_ITERATIONS = 200_000;
 const SALT_PREFIX = 'roomcity-v1-';
 
@@ -37,14 +39,12 @@ export async function storeOwnerVerifier(slug, passphrase) {
     iv: btoa(String.fromCharCode(...iv)),
     ct: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
   };
-  localStorage.setItem(`${slug}:owner-verifier`, JSON.stringify(verifier));
+  persistVerifier(slug, verifier);
 }
 
 export async function verifyOwner(slug, passphrase) {
-  const raw = localStorage.getItem(`${slug}:owner-verifier`);
-  if (!raw) return false;
-  let verifier;
-  try { verifier = JSON.parse(raw); } catch { return false; }
+  const verifier = getOwnerVerifier();
+  if (!verifier) return false;
   const key = await deriveKey(passphrase, slug);
   const iv = Uint8Array.from(atob(verifier.iv), c => c.charCodeAt(0));
   const ct = Uint8Array.from(atob(verifier.ct), c => c.charCodeAt(0));

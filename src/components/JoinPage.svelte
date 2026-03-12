@@ -29,6 +29,7 @@
       const slug = candidate.toLowerCase().replace(/\s+/g, '-');
       await storeOwnerVerifier(slug, passphrase);
       setAddressForSlug(slug, candidate);
+      localStorage.setItem('room-address', candidate); // home bookmark for / redirect
       setEditMode(slug);
       onjoined(slug);
     } catch (e) {

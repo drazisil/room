@@ -22,8 +22,8 @@
   // Destructure so Svelte can auto-subscribe with $ syntax
   const { notepad: notepadPanels, checklist: checklistPanels, bookmarks: bookmarksPanels, image: imagePanels, folder: folderPanels } = panels;
 
-  import { migrate, gatherRoom, roomHasData, clearRoomData, KINDS, pathKey, setCurrentSlug, getAddressForSlug } from './lib/storage.js';
-  import { getAddress, getSlug, getRoomId } from './lib/address.js';
+  import { gatherRoom, roomHasData, applyRoomData, setCurrentSlug, getAddressForSlug, getRoomId } from './lib/storage.js';
+  import { getSlug } from './lib/address.js'; // used in pathToUrl
   import JoinPage from './components/JoinPage.svelte';
 
   // Page state: 'join' or 'room'
@@ -59,45 +59,53 @@
     return p ? `/${slug}/${p}` : `/${slug}`;
   }
 
-  function navigate(newPath) {
+  async function navigate(newPath) {
     history.pushState({}, '', pathToUrl(newPath));
     currentPath.set(newPath);
     path = newPath;
-    loadAll(newPath);
+    await loadAll(newPath);
   }
 
-  function init() {
+  async function init() {
     if (window.location.pathname === '/join') {
       page = 'join';
       return;
     }
-    page = 'room';
-    const slug = slugFromUrl(window.location.pathname) || getSlug();
-    setCurrentSlug(slug);
-    address = getAddressForSlug(slug);
-    // Canonicalize URL on first load at /
-    if (window.location.pathname === '/') {
+
+    // If no slug in the URL, check for a saved home address; redirect to /join if absent.
+    let slug = slugFromUrl(window.location.pathname);
+    if (!slug) {
+      const homeAddr = localStorage.getItem('room-address');
+      if (!homeAddr) {
+        history.replaceState({}, '', '/join');
+        page = 'join';
+        return;
+      }
+      slug = homeAddr.toLowerCase().replace(/\s+/g, '-');
       history.replaceState({}, '', `/${slug}`);
     }
+
+    page = 'room';
+    setCurrentSlug(slug);
     const p = urlToPath(window.location.pathname);
     currentPath.set(p);
     path = p;
-    loadAll(p);
+    await loadAll(p);
+    address = getAddressForSlug(slug);
   }
 
   function handleJoined(slug) {
     history.pushState({}, '', `/${slug}`);
-    init();
+    init().catch(console.error);
   }
 
   onMount(() => {
-    getRoomId(); // ensure ID exists before any data is written
-    migrate();
-    init();
+    init().catch(console.error);
 
-    window.addEventListener('popstate', init);
+    const handlePop = () => init().catch(console.error);
+    window.addEventListener('popstate', handlePop);
     return () => {
-      window.removeEventListener('popstate', init);
+      window.removeEventListener('popstate', handlePop);
     };
   });
 
@@ -205,11 +213,12 @@
   // Save / Load room
   function saveRoom() {
     const basePath = get(currentPath);
+    const slug = slugFromUrl(window.location.pathname) || getSlug();
     const rooms = gatherRoom(basePath);
     const payload = {
       version: 2,
       exported: new Date().toISOString().slice(0, 10),
-      address: getAddress(),
+      address: getAddressForSlug(slug),
       id: getRoomId(),
       rooms,
     };
@@ -248,24 +257,8 @@
 
   function applyRoomPayload(payload, replace) {
     const basePath = get(currentPath);
-    if (replace) clearRoomData(basePath);
-    Object.entries(payload.rooms).forEach(([rel, entry]) => {
-      const targetPath = rel ? (basePath ? `${basePath}/${rel}` : rel) : basePath;
-      KINDS.forEach(kind => {
-        if (!entry[kind]) return;
-        const key = pathKey(kind, targetPath);
-        if (replace) {
-          localStorage.setItem(key, JSON.stringify(entry[kind]));
-        } else {
-          let existing = [];
-          try { existing = JSON.parse(localStorage.getItem(key) || '[]'); } catch {}
-          const existingIds = new Set(existing.map(e => e.id));
-          const merged = [...existing, ...entry[kind].filter(e => !existingIds.has(e.id))];
-          localStorage.setItem(key, JSON.stringify(merged));
-        }
-      });
-    });
-    init();
+    applyRoomData(payload.rooms, basePath, replace);
+    init().catch(console.error);
   }
 
   function handleMerge() {

@@ -37,6 +37,8 @@ export function generateAddress() {
   return `${pick(NUMBERS)} ${pick(NAMES)} ${pick(TYPES)}`;
 }
 
+// The home address is stored in localStorage purely as a navigation bookmark
+// (so that visiting / redirects to the right slug). It is not room content.
 export function getAddress() {
   let addr = localStorage.getItem('room-address');
   if (!addr) {
@@ -48,13 +50,4 @@ export function getAddress() {
 
 export function getSlug() {
   return getAddress().toLowerCase().replace(/\s+/g, '-');
-}
-
-export function getRoomId() {
-  let id = localStorage.getItem('room-id');
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem('room-id', id);
-  }
-  return id;
 }
