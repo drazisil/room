@@ -90,6 +90,14 @@ How do you keep the culture once it grows past the people who sought this out de
 
 What is the address? How does it feel to have one?
 
+The address is assigned, not chosen. `/join` shows you a candidate — poetic, random, memorable. Reroll if it doesn't feel right. Accept it, set a passphrase, and it's yours. You didn't name your street. You just live there now.
+
+The passphrase is the key. Derived cryptographically — same passphrase always produces the same room. No account. No email. No recovery. Write it down or don't, but it's yours as long as you remember it. Forget it and the room goes quiet. Someone else could claim it someday. That feels right.
+
+Closed rooms don't exist. There's no "wrong password" — a closed door has no nameplate. The address simply returns nothing. You can't enumerate what isn't there.
+
+Personal but anonymous. The room is yours without you ever saying who you are. We didn't ask.
+
 What does the guestbook look like that invites the right kind of note? (Text only. No links — a note, not a billboard.)
 
 How small is small enough to protect the thing you're protecting?

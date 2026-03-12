@@ -2,9 +2,32 @@ import { getSlug } from './address.js';
 
 export const KINDS = ['notepad', 'checklist', 'bookmarks', 'image', 'folder'];
 
+// Current slug is set by the router from the URL — do not read from localStorage here.
+let _currentSlug = null;
+
+export function setCurrentSlug(slug) {
+  _currentSlug = slug;
+}
+
+function activeSlug() {
+  return _currentSlug || getSlug();
+}
+
+// Human-readable address stored per slug so we can display it without a global.
+export function setAddressForSlug(slug, address) {
+  localStorage.setItem(`${slug}:address`, address);
+}
+
+export function getAddressForSlug(slug) {
+  const stored = localStorage.getItem(`${slug}:address`);
+  if (stored) return stored;
+  // Derive from slug as fallback: "27-maple-lane" → "27 Maple Lane"
+  return slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
 // All keys namespaced by address slug: "{slug}:store-{kind}" or "{slug}:store-{kind}:{path}"
 export function pathKey(kind, path) {
-  const slug = getSlug();
+  const slug = activeSlug();
   return path ? `${slug}:store-${kind}:${path}` : `${slug}:store-${kind}`;
 }
 
@@ -18,7 +41,7 @@ export function saveStore(kind, path, data) {
 }
 
 export function migrate() {
-  const slug = getSlug();
+  const slug = activeSlug();
 
   // Step 1: old plural keys → room-store-* format
   const pluralMap = {
@@ -51,7 +74,7 @@ export function migrate() {
 }
 
 export function gatherRoom(basePath) {
-  const slug = getSlug();
+  const slug = activeSlug();
   const prefix = `${slug}:store-`;
   const rooms = {};
 
@@ -92,7 +115,7 @@ export function roomHasData(basePath) {
 }
 
 export function clearRoomData(basePath) {
-  const slug = getSlug();
+  const slug = activeSlug();
   const prefix = `${slug}:store-`;
   for (let i = localStorage.length - 1; i >= 0; i--) {
     const key = localStorage.key(i);
@@ -107,7 +130,7 @@ export function clearRoomData(basePath) {
 }
 
 export function renamePath(oldPath, newPath) {
-  const slug = getSlug();
+  const slug = activeSlug();
   KINDS.forEach(kind => {
     const ok = `${slug}:store-${kind}:${oldPath}`;
     const nk = `${slug}:store-${kind}:${newPath}`;

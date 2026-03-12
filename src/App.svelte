@@ -22,8 +22,12 @@
   // Destructure so Svelte can auto-subscribe with $ syntax
   const { notepad: notepadPanels, checklist: checklistPanels, bookmarks: bookmarksPanels, image: imagePanels, folder: folderPanels } = panels;
 
-  import { migrate, gatherRoom, roomHasData, clearRoomData, KINDS, pathKey } from './lib/storage.js';
-  import { getAddress, getRoomId } from './lib/address.js';
+  import { migrate, gatherRoom, roomHasData, clearRoomData, KINDS, pathKey, setCurrentSlug, getAddressForSlug } from './lib/storage.js';
+  import { getAddress, getSlug, getRoomId } from './lib/address.js';
+  import JoinPage from './components/JoinPage.svelte';
+
+  // Page state: 'join' or 'room'
+  let page = $state('room');
 
   // Context menu state
   let ctxMenu = $state(null); // null or { x, y }
@@ -37,21 +41,21 @@
 
   // Current path as reactive value
   let path = $state('');
+  let address = $state('');
 
-  // Address slug is the first URL segment — identifies this room
-  function addressSlug() {
-    return getAddress().toLowerCase().replace(/\s+/g, '-');
+  // Slug is always the first URL segment — never read from localStorage for routing.
+  function slugFromUrl(pathname) {
+    const first = pathname.split('/').filter(Boolean)[0];
+    return first || null;
   }
 
   function urlToPath(pathname) {
-    const slug = addressSlug();
-    if (pathname === '/' + slug) return '';
-    if (pathname.startsWith('/' + slug + '/')) return pathname.slice(slug.length + 2);
-    return ''; // anything else → root
+    const parts = pathname.split('/').filter(Boolean);
+    return parts.slice(1).join('/');
   }
 
   function pathToUrl(p) {
-    const slug = addressSlug();
+    const slug = slugFromUrl(window.location.pathname) || getSlug();
     return p ? `/${slug}/${p}` : `/${slug}`;
   }
 
@@ -63,14 +67,27 @@
   }
 
   function init() {
-    const p = urlToPath(window.location.pathname);
-    // Canonicalize URL on first load
-    if (window.location.pathname === '/') {
-      history.replaceState({}, '', pathToUrl(''));
+    if (window.location.pathname === '/join') {
+      page = 'join';
+      return;
     }
+    page = 'room';
+    const slug = slugFromUrl(window.location.pathname) || getSlug();
+    setCurrentSlug(slug);
+    address = getAddressForSlug(slug);
+    // Canonicalize URL on first load at /
+    if (window.location.pathname === '/') {
+      history.replaceState({}, '', `/${slug}`);
+    }
+    const p = urlToPath(window.location.pathname);
     currentPath.set(p);
     path = p;
     loadAll(p);
+  }
+
+  function handleJoined(slug) {
+    history.pushState({}, '', `/${slug}`);
+    init();
   }
 
   onMount(() => {
@@ -282,8 +299,12 @@
 
 <svelte:document oncontextmenu={handleContextMenuOpen} onclick={handleClick} />
 
+{#if page === 'join'}
+  <JoinPage onjoined={handleJoined} />
+{:else}
+
 <div id="topbar">
-  <Breadcrumb {path} {navigate} />
+  <Breadcrumb {path} {navigate} {address} />
   <div id="topbar-actions">
     <button onclick={saveRoom}>save room</button>
     <button onclick={loadRoom}>load room</button>
@@ -316,4 +337,6 @@
 
 {#if mergeDialog}
   <MergeDialog onmerge={handleMerge} onreplace={handleReplace} oncancel={handleMergeCancel} />
+{/if}
+
 {/if}

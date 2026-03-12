@@ -1,9 +1,5 @@
 <script>
-  import { getAddress } from '../lib/address.js';
-
-  let { path, navigate } = $props();
-
-  const address = getAddress();
+  let { path, navigate, address } = $props();
   let parts = $derived(path ? path.split('/') : []);
   let copied = $state(false);
 
