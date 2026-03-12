@@ -12,6 +12,35 @@ mkdirSync(DATA_DIR, { recursive: true });
 const SLUG_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 const MAX_BODY = 2 * 1024 * 1024; // 2 MB
 
+// Structured event log — useful for detecting brute-force attempts
+function logEvent(event, detail = {}) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), event, ...detail }));
+}
+
+// In-memory rate limiter for /verify: max 20 attempts per IP+slug per 15 minutes
+const _verifyAttempts = new Map();
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
+
+function getClientIp(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+    ?? req.socket?.remoteAddress
+    ?? 'unknown';
+}
+
+function checkRateLimit(ip, slug) {
+  const key = `${ip}:${slug}`;
+  const now = Date.now();
+  const entry = _verifyAttempts.get(key);
+  if (!entry || now > entry.resetAt) {
+    _verifyAttempts.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
+
 // Only allow safe raster image data URIs — no SVG, no HTML
 const SAFE_IMAGE_PREFIXES = [
   'data:image/png;base64,',
@@ -198,9 +227,16 @@ export async function handleApiRequest(req, res) {
   if (verifyMatch && req.method === 'POST') {
     const slug = verifyMatch[1];
     try { validateSlug(slug); } catch { send(res, 400, { error: 'invalid slug' }); return true; }
+    const ip = getClientIp(req);
+    if (!checkRateLimit(ip, slug)) {
+      logEvent('verify.rate_limited', { slug, ip });
+      send(res, 429, { error: 'too many attempts' });
+      return true;
+    }
     const room = await readRoom(slug);
     if (!room?.ownerVerifier) { send(res, 404, { error: 'not found' }); return true; }
     const ok = await verifyOwnership(req, room);
+    logEvent(ok ? 'verify.ok' : 'verify.fail', { slug, ip });
     send(res, ok ? 200 : 403, ok ? { ok: true } : { error: 'forbidden' });
     return true;
   }
@@ -263,6 +299,7 @@ export async function handleApiRequest(req, res) {
       }
       const { unlink } = await import('node:fs/promises');
       await unlink(join(DATA_DIR, `${slug}.json`)).catch(() => {});
+      logEvent('room.deleted', { slug, ip: getClientIp(req) });
       send(res, 200, { deleted: true });
     } else {
       send(res, 405, { error: 'method not allowed' });

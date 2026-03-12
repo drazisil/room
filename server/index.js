@@ -12,6 +12,9 @@ const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'SAMEORIGIN',
   'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self' data:;",
+  // No referrer sent when navigating away — rooms don't announce themselves to external sites
+  'Referrer-Policy': 'no-referrer',
+  'Permissions-Policy': 'interest-cohort=(), camera=(), microphone=(), geolocation=()',
 };
 
 const MIME = {

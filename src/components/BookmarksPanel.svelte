@@ -114,6 +114,7 @@
     fileInput.addEventListener('change', () => {
       const file = fileInput.files[0];
       if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { alert('File too large (max 5 MB).'); return; }
       const reader = new FileReader();
       reader.onload = ev => {
         const parser = new DOMParser();
@@ -195,7 +196,7 @@
                 class="bookmark-link"
                 href={item.url}
                 target="_blank"
-                rel="noopener"
+                rel="noopener noreferrer"
                 title={item.url}
                 ondblclick={(e) => { if (!readonly) { e.preventDefault(); startRename(i); } }}
               >{item.title}</a>
