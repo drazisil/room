@@ -1,34 +1,33 @@
 <script>
-  import { onMount } from 'svelte';
-  import { loadRoom, setCurrentSlug, getAddressForSlug } from '../lib/storage.js';
+  import { setCurrentSlug } from '../lib/storage.js';
+  import { loadRoom } from '../lib/storage.js';
   import { verifyOwner, setEditMode } from '../lib/crypto.js';
-
-  const homeAddr = localStorage.getItem('room-address');
-  const slug = homeAddr ? homeAddr.toLowerCase().replace(/\s+/g, '-') : null;
 
   let address = $state('');
   let passphrase = $state('');
   let error = $state('');
   let busy = $state(false);
 
-  onMount(async () => {
-    if (!slug) return;
-    setCurrentSlug(slug);
-    await loadRoom();
-    address = getAddressForSlug(slug);
-  });
+  function slugFromAddress(addr) {
+    return addr.trim().toLowerCase().replace(/\s+/g, '-');
+  }
 
   async function submit() {
+    if (!address.trim()) { error = 'enter your address'; return; }
     if (!passphrase) { error = 'enter your passphrase'; return; }
     busy = true;
     error = '';
+    const slug = slugFromAddress(address);
     try {
+      setCurrentSlug(slug);
+      await loadRoom();
       const ok = await verifyOwner(slug, passphrase);
       if (ok) {
         setEditMode(slug);
+        localStorage.setItem('room-address', address.trim());
         window.location.href = `/${slug}`;
       } else {
-        error = 'wrong passphrase';
+        error = 'wrong address or passphrase';
         busy = false;
       }
     } catch (e) {
@@ -41,31 +40,31 @@
 
 <div class="mine-wrap">
   <div class="mine-box">
-    {#if !slug}
-      <p class="mine-hint">you don't have a room yet.</p>
-      <a href="/join">find your place →</a>
-    {:else}
-      <p class="mine-label">your room</p>
-      <p class="mine-address">{address}</p>
-      <p class="mine-hint">enter your passphrase to tend it. no account, no email — the passphrase is how we know it's you.</p>
-      <input
-        type="password"
-        placeholder="passphrase"
-        bind:value={passphrase}
-        disabled={busy}
-        onkeydown={e => e.key === 'Enter' && submit()}
-        autofocus
-      />
-      {#if error}
-        <p class="mine-error">{error}</p>
-      {/if}
-      <div class="mine-actions">
-        <button class="primary" onclick={submit} disabled={busy}>
-          {busy ? 'checking…' : 'enter'}
-        </button>
-        <a href="/join">new room instead</a>
-      </div>
+    <p class="mine-hint">enter your address and passphrase to tend your room. no account, no email — the passphrase is how we know it's you.</p>
+    <input
+      type="text"
+      placeholder="your address"
+      bind:value={address}
+      disabled={busy}
+      onkeydown={e => e.key === 'Enter' && submit()}
+      autofocus
+    />
+    <input
+      type="password"
+      placeholder="passphrase"
+      bind:value={passphrase}
+      disabled={busy}
+      onkeydown={e => e.key === 'Enter' && submit()}
+    />
+    {#if error}
+      <p class="mine-error">{error}</p>
     {/if}
+    <div class="mine-actions">
+      <button class="primary" onclick={submit} disabled={busy}>
+        {busy ? 'checking…' : 'enter'}
+      </button>
+      <a href="/join">new room instead</a>
+    </div>
   </div>
 </div>
 
@@ -87,25 +86,13 @@
     padding: 0 2rem;
   }
 
-  .mine-label {
-    font-size: 0.75rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--faint);
-  }
-
-  .mine-address {
-    font-size: 1.6rem;
-    color: var(--ink);
-    line-height: 1.3;
-  }
-
   .mine-hint {
     font-size: 0.85rem;
     color: var(--faint);
     line-height: 1.6;
   }
 
+  input[type="text"],
   input[type="password"] {
     background: transparent;
     border: none;
@@ -118,7 +105,10 @@
     width: 100%;
   }
 
+  input[type="text"]::placeholder,
   input[type="password"]::placeholder { color: var(--faint); }
+
+  input[type="text"]:focus,
   input[type="password"]:focus { border-bottom-color: var(--faint); }
 
   .mine-error {
