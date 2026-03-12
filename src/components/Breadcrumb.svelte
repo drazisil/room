@@ -11,16 +11,13 @@
 </script>
 
 <nav id="breadcrumb">
-  <span
-    class="crumb"
-    class:current={parts.length === 0}
-    onclick={parts.length > 0 ? () => navigate('') : undefined}
-  >{address}</span>
-
   {#if parts.length === 0}
+    <span class="crumb current">{address}</span>
     <button class="copy-address" onclick={copyAddress} title="copy address">
       {copied ? 'copied' : '·'}
     </button>
+  {:else}
+    <button class="crumb" onclick={() => navigate('')}>{address}</button>
   {/if}
 
   {#each parts as part, i}
@@ -29,7 +26,20 @@
       <span class="crumb current">{part}</span>
     {:else}
       {@const crumbPath = parts.slice(0, i + 1).join('/')}
-      <span class="crumb" onclick={() => navigate(crumbPath)}>{crumbPath}</span>
+      <button class="crumb" onclick={() => navigate(crumbPath)}>{crumbPath}</button>
     {/if}
   {/each}
 </nav>
+
+<style>
+  /* Reset button appearance so crumb buttons match crumb spans */
+  button.crumb {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+</style>

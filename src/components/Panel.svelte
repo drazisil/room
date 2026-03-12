@@ -78,11 +78,15 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
+<!-- Panels are free-floating canvas widgets — no standard ARIA role fits. The aria-label
+     on the generic div still provides screen reader context for the panel's content type. -->
 <div
   bind:this={el}
   class="panel {extraClass}"
   class:raised
   {id}
+  aria-label={title}
   style:left="{x}px"
   style:top="{y}px"
   style:width="{w}px"
