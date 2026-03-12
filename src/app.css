@@ -43,7 +43,7 @@ button:hover { color: var(--ink); }
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.8rem;
+  font-size: 1rem;
   color: var(--faint);
   letter-spacing: 0.04em;
   pointer-events: all;
@@ -67,12 +67,12 @@ button:hover { color: var(--ink); }
 
 #topbar-actions {
   display: flex; gap: 1rem;
-  font-size: 0.75rem; letter-spacing: 0.08em;
+  font-size: 1rem; letter-spacing: 0.08em;
   pointer-events: all;
 }
 
 #topbar-actions button {
-  color: var(--ink); font-size: 0.75rem; letter-spacing: 0.08em;
+  color: var(--ink); font-size: 1rem; letter-spacing: 0.08em;
 }
 #topbar-actions button:hover { color: #fff; }
 
