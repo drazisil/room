@@ -1,9 +1,10 @@
 <script>
-  import { setCurrentSlug } from '../lib/storage.js';
-  import { loadRoom } from '../lib/storage.js';
+  import { setCurrentSlug, loadRoom } from '../lib/storage.js';
   import { verifyOwner, setEditMode } from '../lib/crypto.js';
 
-  let address = $state('');
+  const savedAddress = localStorage.getItem('room-address');
+
+  let address = $state(savedAddress ?? '');
   let passphrase = $state('');
   let error = $state('');
   let busy = $state(false);
@@ -40,21 +41,32 @@
 
 <div class="mine-wrap">
   <div class="mine-box">
-    <p class="mine-hint">enter your address and passphrase to tend your room. no account, no email — the passphrase is how we know it's you.</p>
-    <input
-      type="text"
-      placeholder="your address"
-      bind:value={address}
-      disabled={busy}
-      onkeydown={e => e.key === 'Enter' && submit()}
-      autofocus
-    />
+    {#if savedAddress}
+      <p class="mine-label">welcome home</p>
+      <p class="mine-address">{savedAddress}</p>
+      <input type="text" id="username" name="username" autocomplete="username" value={savedAddress} readonly class="hidden-username" tabindex="-1" aria-hidden="true" />
+    {:else}
+      <p class="mine-hint">enter your address and passphrase to tend your room. no account, no email — the passphrase is how we know it's you.</p>
+      <input
+        type="text"
+        id="username"
+        name="username"
+        autocomplete="username"
+        placeholder="your address"
+        bind:value={address}
+        disabled={busy}
+        onkeydown={e => e.key === 'Enter' && submit()}
+        autofocus
+      />
+    {/if}
     <input
       type="password"
+      autocomplete="current-password"
       placeholder="passphrase"
       bind:value={passphrase}
       disabled={busy}
       onkeydown={e => e.key === 'Enter' && submit()}
+      autofocus={!!savedAddress}
     />
     {#if error}
       <p class="mine-error">{error}</p>
@@ -84,6 +96,29 @@
     max-width: 28rem;
     width: 100%;
     padding: 0 2rem;
+  }
+
+  .mine-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .mine-address {
+    font-size: 1.6rem;
+    color: var(--ink);
+    line-height: 1.3;
+  }
+
+  .hidden-username {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    height: 0;
+    padding: 0;
+    border: none;
   }
 
   .mine-hint {

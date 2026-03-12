@@ -56,9 +56,11 @@
       <p class="join-address">{candidate}</p>
       <p class="join-hint">choose a passphrase. write it down. we can't recover it.</p>
       <div class="join-fields">
+        <input type="text" id="username" name="username" autocomplete="username" value={candidate} readonly class="hidden-username" tabindex="-1" aria-hidden="true" />
         <input
           type="password"
           placeholder="passphrase"
+          autocomplete="new-password"
           bind:value={passphrase}
           disabled={busy}
           onkeydown={e => e.key === 'Enter' && submit()}
@@ -66,6 +68,7 @@
         <input
           type="password"
           placeholder="confirm"
+          autocomplete="new-password"
           bind:value={confirm}
           disabled={busy}
           onkeydown={e => e.key === 'Enter' && submit()}
@@ -137,6 +140,16 @@
     color: var(--ink);
     outline: none;
     width: 100%;
+  }
+
+  .hidden-username {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    height: 0;
+    padding: 0;
+    border: none;
   }
 
   .join-fields input::placeholder { color: var(--faint); }

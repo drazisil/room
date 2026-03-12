@@ -11,6 +11,7 @@
       const resp = await fetch('/api/rooms/random');
       if (!resp.ok) { empty = true; return; }
       room = await resp.json();
+      history.replaceState({}, '', `/${room.slug}`);
       // Collect all panels from the root path ('')
       const store = room.store ?? {};
       const all = [];
