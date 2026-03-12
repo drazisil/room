@@ -1,4 +1,4 @@
-import { getOwnerVerifier, storeOwnerVerifier as persistVerifier } from './storage.js';
+import { storeOwnerVerifier as persistVerifier } from './storage.js';
 
 const PBKDF2_ITERATIONS = 200_000;
 const SALT_PREFIX = 'roomcity-v1-';
@@ -21,9 +21,14 @@ async function deriveKey(passphrase, slug) {
     },
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
-    false,
+    true, // extractable so we can export it as a session auth token
     ['encrypt', 'decrypt']
   );
+}
+
+async function exportKeyAsBase64(key) {
+  const raw = await crypto.subtle.exportKey('raw', key);
+  return btoa(String.fromCharCode(...new Uint8Array(raw)));
 }
 
 export async function storeOwnerVerifier(slug, passphrase) {
@@ -40,17 +45,26 @@ export async function storeOwnerVerifier(slug, passphrase) {
     ct: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
   };
   persistVerifier(slug, verifier);
+  // Store derived key as session auth token for subsequent write requests
+  sessionStorage.setItem(`${slug}:key`, await exportKeyAsBase64(key));
 }
 
+// Verifies ownership by sending the derived key to the server.
+// The server checks it against the stored ownerVerifier — no verifier data
+// is exposed to the client.
 export async function verifyOwner(slug, passphrase) {
-  const verifier = getOwnerVerifier();
-  if (!verifier) return false;
   const key = await deriveKey(passphrase, slug);
-  const iv = Uint8Array.from(atob(verifier.iv), c => c.charCodeAt(0));
-  const ct = Uint8Array.from(atob(verifier.ct), c => c.charCodeAt(0));
+  const keyB64 = await exportKeyAsBase64(key);
   try {
-    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
-    return new TextDecoder().decode(plain) === 'roomcity-owner';
+    const resp = await fetch(`/api/rooms/${slug}/verify`, {
+      method: 'POST',
+      headers: { 'X-Room-Key': keyB64 },
+    });
+    if (resp.ok) {
+      sessionStorage.setItem(`${slug}:key`, keyB64);
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -66,4 +80,5 @@ export function setEditMode(slug) {
 
 export function clearEditMode(slug) {
   sessionStorage.removeItem(`${slug}:edit`);
+  sessionStorage.removeItem(`${slug}:key`);
 }

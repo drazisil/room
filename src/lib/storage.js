@@ -21,8 +21,12 @@ export async function loadRoom() {
   if (!slug) return;
   if (slug === _loadedSlug && _roomCache) return;
 
+  const headers = {};
+  const key = sessionStorage.getItem(`${slug}:key`);
+  if (key) headers['X-Room-Key'] = key;
+
   try {
-    const resp = await fetch(`/api/rooms/${slug}`);
+    const resp = await fetch(`/api/rooms/${slug}`, { headers });
     if (resp.ok) {
       _roomCache = await resp.json();
     } else if (resp.status === 404) {
@@ -48,9 +52,12 @@ export async function loadRoom() {
 function patchRoom(updates) {
   const slug = _currentSlug;
   if (!slug) return;
+  const headers = { 'Content-Type': 'application/json' };
+  const key = sessionStorage.getItem(`${slug}:key`);
+  if (key) headers['X-Room-Key'] = key;
   fetch(`/api/rooms/${slug}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(updates),
   }).catch(err => console.error('[storage] patchRoom failed:', err));
 }
@@ -239,7 +246,10 @@ export function getRoomOpen() {
 export async function deleteRoom() {
   const slug = _currentSlug;
   if (!slug) return;
-  await fetch(`/api/rooms/${slug}`, { method: 'DELETE' });
+  const headers = {};
+  const key = sessionStorage.getItem(`${slug}:key`);
+  if (key) headers['X-Room-Key'] = key;
+  await fetch(`/api/rooms/${slug}`, { method: 'DELETE', headers });
   _roomCache = null;
   _loadedSlug = null;
 }

@@ -138,6 +138,14 @@
     fileInput.click();
   }
 
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   function handleExport() {
     const snapshot = $state.snapshot(items);
     const lines = [
@@ -146,7 +154,7 @@
       '<TITLE>Bookmarks</TITLE>',
       '<H1>Bookmarks</H1>',
       '<DL><p>',
-      ...snapshot.map(item => `  <DT><A HREF="${item.url}">${item.title}</A>`),
+      ...snapshot.map(item => `  <DT><A HREF="${escapeHtml(item.url)}">${escapeHtml(item.title)}</A>`),
       '</DL><p>',
     ];
     const blob = new Blob([lines.join('\n')], { type: 'text/html' });

@@ -41,7 +41,15 @@ Room data lives in `data/{slug}.json`. There is no database. The shape is:
 
 ### Edit mode and ownership
 
-Ownership is verified client-side via PBKDF2/AES-GCM (`src/lib/crypto.js`). The `ownerVerifier` is stored server-side. On successful join, `sessionStorage.setItem('{slug}:edit', '1')` is set. All panels accept a `readonly` prop; when not in edit mode all panels are fully read-only (no drag/resize/delete/context menu). Only the owner (edit mode) sees the "manage" link.
+Ownership is verified **server-side**. The client derives an AES-GCM key from the passphrase+slug via PBKDF2 (`src/lib/crypto.js`), exports the raw key bytes as base64, and posts them to `POST /api/rooms/:slug/verify`. The server decrypts the stored `ownerVerifier` with that key and confirms the plaintext. `ownerVerifier` is never sent to clients in any API response.
+
+On successful verify, the derived key is stored in `sessionStorage['{slug}:key']` and used as a bearer token (`X-Room-Key` header) on all subsequent write requests (PATCH, DELETE) and room loads. `sessionStorage['{slug}:edit'] = '1'` gates the edit UI.
+
+All panels accept a `readonly` prop; when not in edit mode all panels are fully read-only (no drag/resize/delete/context menu). Only the owner (edit mode) sees the "manage" link.
+
+### Open / closed rooms
+
+"Open" means the room appears on `/` (the random index) and is publicly readable. "Closed" (the default) means the room is completely invisible: `GET /rooms/:slug` returns 404 to anyone without a valid `X-Room-Key`. The room's existence is not revealed. The owner can still load their closed room because `loadRoom()` sends the session key.
 
 ### Svelte 5 runes
 

@@ -8,6 +8,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DIST = join(__dirname, '..', 'dist');
 const PORT = process.env.PORT || 3000;
 
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self' data:;",
+};
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript',
@@ -41,13 +47,13 @@ const server = createServer(async (req, res) => {
   try {
     const data = await readFile(filePath);
     const mime = MIME[extname(filePath)] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': mime });
+    res.writeHead(200, { 'Content-Type': mime, ...SECURITY_HEADERS });
     res.end(data);
   } catch {
     // SPA fallback
     try {
       const html = await readFile(join(DIST, 'index.html'));
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', ...SECURITY_HEADERS });
       res.end(html);
     } catch {
       res.writeHead(500);
