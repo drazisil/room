@@ -21,14 +21,15 @@
   // Destructure so Svelte can auto-subscribe with $ syntax
   const { notepad: notepadPanels, checklist: checklistPanels, bookmarks: bookmarksPanels, image: imagePanels, folder: folderPanels } = panels;
 
-  import { setCurrentSlug, getAddressForSlug } from './lib/storage.js';
+  import { setCurrentSlug, getAddressForSlug, getRoomOpen } from './lib/storage.js';
   import { getSlug } from './lib/address.js'; // used in pathToUrl
-  import { isEditMode } from './lib/crypto.js';
+  import { isEditMode, clearEditMode } from './lib/crypto.js';
   import JoinPage from './components/JoinPage.svelte';
+  import MinePage from './components/MinePage.svelte';
   import IndexPage from './components/IndexPage.svelte';
   import ManagePage from './components/ManagePage.svelte';
 
-  // Page state: 'index' | 'join' | 'room' | 'manage'
+  // Page state: 'index' | 'join' | 'mine' | 'room' | 'manage'
   let page = $state('room');
   let activeSlug = $state('');
   let editMode = $state(false);
@@ -75,6 +76,11 @@
       return;
     }
 
+    if (pathname === '/mine') {
+      page = 'mine';
+      return;
+    }
+
     if (pathname === '/manage') {
       const homeAddr = localStorage.getItem('room-address');
       if (!homeAddr) {
@@ -106,12 +112,20 @@
     setCurrentSlug(slug);
     activeSlug = slug;
     editMode = isEditMode(slug);
-    page = 'room';
     const p = urlToPath(pathname);
     currentPath.set(p);
     path = p;
     await loadAll(p);
     address = getAddressForSlug(slug);
+
+    // Closed rooms are invisible to non-owners — treat as not found.
+    if (!getRoomOpen() && !editMode) {
+      history.replaceState({}, '', '/');
+      page = 'index';
+      return;
+    }
+
+    page = 'room';
   }
 
   function navigateToManage() {
@@ -262,6 +276,8 @@
   <IndexPage />
 {:else if page === 'join'}
   <JoinPage onjoined={handleJoined} />
+{:else if page === 'mine'}
+  <MinePage />
 {:else if page === 'manage'}
   <ManagePage slug={activeSlug} onleave={leaveManage} />
 {:else}
@@ -271,6 +287,7 @@
   <div id="topbar-actions">
     {#if editMode}
       <button onclick={navigateToManage}>manage</button>
+      <button onclick={() => { clearEditMode(activeSlug); editMode = false; }}>leave</button>
     {/if}
   </div>
 </div>

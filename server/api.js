@@ -36,6 +36,7 @@ function mergeRoom(current, patch) {
   if ('address' in patch) result.address = patch.address;
   if ('id' in patch) result.id = patch.id;
   if ('ownerVerifier' in patch) result.ownerVerifier = patch.ownerVerifier;
+  if ('open' in patch) result.open = patch.open;
   if (patch.store) {
     result.store = { ...(result.store || {}) };
     for (const [kind, paths] of Object.entries(patch.store)) {

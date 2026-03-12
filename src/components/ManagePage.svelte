@@ -77,7 +77,7 @@
   // Log out
   function logOut() {
     clearEditMode(slug);
-    onleave();
+    window.location.href = '/mine';
   }
 
   // Delete
