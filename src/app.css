@@ -2,8 +2,8 @@
 
 :root {
   --paper: #242220;
-  --ink: #cdc8be;
-  --faint: #7d7970;
+  --ink: #d8d2c8;   /* was #cdc8be — ~10.7:1 contrast, warm cream */
+  --faint: #a09890; /* was #7d7970 — bumped from 3.76:1 to ~5.75:1, passes WCAG AA */
   --warm: #343230;
   --surface: #2c2a28;
 }
