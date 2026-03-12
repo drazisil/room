@@ -2,7 +2,7 @@
   import Panel from './Panel.svelte';
   import { updatePanel } from '../stores/index.js';
 
-  let { id, x, y, w, h, items: initialItems = [] } = $props();
+  let { id, x, y, w, h, items: initialItems = [], readonly = false } = $props();
 
   let items = $state(initialItems.map(item => ({ ...item })));
   let newItemText = $state('');
@@ -34,7 +34,7 @@
   }
 </script>
 
-<Panel {id} kind="checklist" {x} {y} {w} {h} title="checklist">
+<Panel {id} kind="checklist" {x} {y} {w} {h} title="checklist" {readonly}>
   {#snippet children()}
     <ul class="checklist-items">
       {#each items as item, i (i)}
@@ -43,21 +43,24 @@
             type="checkbox"
             id="{id}-item-{i}"
             checked={item.done}
-            onchange={() => toggleItem(i)}
+            onchange={() => { if (!readonly) toggleItem(i); }}
+            disabled={readonly}
           />
           <label for="{id}-item-{i}">{item.text}</label>
-          <button onclick={() => removeItem(i)}>×</button>
+          {#if !readonly}<button onclick={() => removeItem(i)}>×</button>{/if}
         </li>
       {/each}
     </ul>
-    <div class="new-item-row">
-      <input
-        class="new-item-input"
-        placeholder="add something"
-        bind:value={newItemText}
-        onkeydown={handleKeyDown}
-      />
-      <button onclick={addItem}>add</button>
-    </div>
+    {#if !readonly}
+      <div class="new-item-row">
+        <input
+          class="new-item-input"
+          placeholder="add something"
+          bind:value={newItemText}
+          onkeydown={handleKeyDown}
+        />
+        <button onclick={addItem}>add</button>
+      </div>
+    {/if}
   {/snippet}
 </Panel>

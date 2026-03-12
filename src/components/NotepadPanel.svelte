@@ -2,7 +2,7 @@
   import Panel from './Panel.svelte';
   import { updatePanel } from '../stores/index.js';
 
-  let { id, x, y, w, h, content: initialContent = '' } = $props();
+  let { id, x, y, w, h, content: initialContent = '', readonly = false } = $props();
 
   let content = $state(initialContent);
   let savedText = $state('');
@@ -19,7 +19,7 @@
   }
 </script>
 
-<Panel {id} kind="notepad" {x} {y} {w} {h} title="notepad">
+<Panel {id} kind="notepad" {x} {y} {w} {h} title="notepad" {readonly}>
   {#snippet children()}
     <textarea
       class="notepad-ta"
@@ -27,7 +27,8 @@
       rows="8"
       bind:value={content}
       oninput={handleInput}
+      {readonly}
     ></textarea>
-    <div class="saved-note">{savedText}</div>
+    {#if !readonly}<div class="saved-note">{savedText}</div>{/if}
   {/snippet}
 </Panel>

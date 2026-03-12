@@ -71,13 +71,54 @@ function send(res, status, data) {
   res.end(body);
 }
 
+const PANEL_KINDS = ['notepad', 'checklist', 'bookmarks', 'image', 'folder'];
+
+function roomHasContent(room) {
+  const store = room?.store;
+  if (!store) return false;
+  return PANEL_KINDS.some(kind =>
+    Object.values(store[kind] ?? {}).some(arr => Array.isArray(arr) && arr.length > 0)
+  );
+}
+
+async function pickRandomRoom() {
+  const { readdir } = await import('node:fs/promises');
+  let files;
+  try {
+    files = (await readdir(DATA_DIR)).filter(f => f.endsWith('.json'));
+  } catch {
+    return null;
+  }
+  files.sort(() => Math.random() - 0.5);
+  for (const file of files) {
+    const slug = file.slice(0, -5);
+    const room = await readRoom(slug);
+    if (room && room.open === true && roomHasContent(room)) return { slug, ...room };
+  }
+  return null;
+}
+
 // Routes (req.url must already have /api prefix stripped):
-//   GET   /rooms/:slug  → full room JSON (404 if not found)
-//   PATCH /rooms/:slug  → merge patch into room (creates if missing)
-//   PUT   /rooms/:slug  → full replace
+//   GET    /rooms/random  → random open room with content (404 if none)
+//   GET    /rooms/:slug   → full room JSON (404 if not found)
+//   PATCH  /rooms/:slug   → merge patch into room (creates if missing)
+//   PUT    /rooms/:slug   → full replace
+//   DELETE /rooms/:slug   → delete room file
 
 export async function handleApiRequest(req, res) {
   const url = new URL(req.url, 'http://x');
+
+  if (url.pathname === '/rooms/random' && req.method === 'GET') {
+
+    const room = await pickRandomRoom();
+    if (!room) {
+      send(res, 404, { error: 'no rooms available' });
+    } else {
+      send(res, 200, room);
+    }
+    return true;
+  }
+
   const match = url.pathname.match(/^\/rooms\/([^/]+)\/?$/);
   if (!match) return false;
 
@@ -107,6 +148,10 @@ export async function handleApiRequest(req, res) {
       const data = await readBody(req);
       await writeRoom(slug, data);
       send(res, 200, data);
+    } else if (req.method === 'DELETE') {
+      const { unlink } = await import('node:fs/promises');
+      await unlink(join(DATA_DIR, `${slug}.json`)).catch(() => {});
+      send(res, 200, { deleted: true });
     } else {
       send(res, 405, { error: 'method not allowed' });
     }

@@ -11,6 +11,7 @@
     h = null,
     title,
     extraClass = '',
+    readonly = false,
     children,
     headerActions,
     overlay,
@@ -87,25 +88,34 @@
   style:width="{w}px"
   style:height={h ? `${h}px` : null}
   style:z-index={zIndex}
-  onmousedown={handleMouseDown}
+  onmousedown={readonly ? null : handleMouseDown}
 >
-  <div
-    class="panel-handle"
-    use:draggable={{ getPanel: () => el, onStart: onDragStart, onEnd: onDragEnd }}
-  >
-    {#if title}<span class="panel-title">{title}</span>{/if}
-    {@render headerActions?.()}
-    <button onclick={handleDelete}>×</button>
-  </div>
+  {#if readonly}
+    <div class="panel-handle">
+      {#if title}<span class="panel-title">{title}</span>{/if}
+      {@render headerActions?.()}
+    </div>
+  {:else}
+    <div
+      class="panel-handle"
+      use:draggable={{ getPanel: () => el, onStart: onDragStart, onEnd: onDragEnd }}
+    >
+      {#if title}<span class="panel-title">{title}</span>{/if}
+      {@render headerActions?.()}
+      <button onclick={handleDelete}>×</button>
+    </div>
+  {/if}
 
   <div class="panel-body">
     {@render children?.()}
   </div>
 
-  <div
-    class="resize-handle"
-    use:resizable={{ getPanel: () => el, onStart: onResizeStart, onEnd: onResizeEnd }}
-  ></div>
+  {#if !readonly}
+    <div
+      class="resize-handle"
+      use:resizable={{ getPanel: () => el, onStart: onResizeStart, onEnd: onResizeEnd }}
+    ></div>
+  {/if}
 
   {@render overlay?.()}
 </div>

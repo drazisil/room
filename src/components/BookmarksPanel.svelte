@@ -3,7 +3,7 @@
   import Panel from './Panel.svelte';
   import { updatePanel, addPanel } from '../stores/index.js';
 
-  let { id, x, y, w, h, items: initialItems = [], scrollTop: initialScrollTop = 0 } = $props();
+  let { id, x, y, w, h, items: initialItems = [], scrollTop: initialScrollTop = 0, readonly = false } = $props();
 
   let items = $state(initialItems.map(item => ({ ...item })));
   let ulEl = $state(null);
@@ -162,10 +162,12 @@
   }
 </script>
 
-<Panel {id} kind="bookmarks" {x} {y} {w} {h} title="bookmarks">
+<Panel {id} kind="bookmarks" {x} {y} {w} {h} title="bookmarks" {readonly}>
   {#snippet headerActions()}
-    <button onclick={handleImport} title="import browser bookmarks (.html)">import</button>
-    <button onclick={handleExport} title="export as browser bookmarks (.html)">export</button>
+    {#if !readonly}
+      <button onclick={handleImport} title="import browser bookmarks (.html)">import</button>
+      <button onclick={handleExport} title="export as browser bookmarks (.html)">export</button>
+    {/if}
   {/snippet}
 
   {#snippet children()}
@@ -173,7 +175,7 @@
       <ul class="bookmark-list" bind:this={ulEl} onscroll={handleScroll}>
         {#each items as item, i (i)}
           <li>
-            {#if renamingIndex === i}
+            {#if !readonly && renamingIndex === i}
               <input
                 class="bookmark-title-input"
                 bind:value={renameValue}
@@ -187,36 +189,38 @@
                 target="_blank"
                 rel="noopener"
                 title={item.url}
-                ondblclick={(e) => { e.preventDefault(); startRename(i); }}
+                ondblclick={(e) => { if (!readonly) { e.preventDefault(); startRename(i); } }}
               >{item.title}</a>
             {/if}
             <span class="bookmark-url">{getHostname(item.url)}</span>
-            <button onclick={() => removeItem(i)}>×</button>
+            {#if !readonly}<button onclick={() => removeItem(i)}>×</button>{/if}
           </li>
         {/each}
       </ul>
 
-      <div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--warm);display:flex;flex-direction:column;gap:0.4rem;">
-        <input
-          class="new-item-input"
-          placeholder="url"
-          type="url"
-          bind:value={urlInput}
-          bind:this={urlInputEl}
-          onblur={handleUrlBlur}
-          onkeydown={handleUrlKeyDown}
-        />
-        <div style="display:flex;gap:0.6rem;">
+      {#if !readonly}
+        <div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--warm);display:flex;flex-direction:column;gap:0.4rem;">
           <input
             class="new-item-input"
-            placeholder="title (optional)"
-            bind:value={titleInput}
-            bind:this={titleInputEl}
-            onkeydown={handleTitleKeyDown}
+            placeholder="url"
+            type="url"
+            bind:value={urlInput}
+            bind:this={urlInputEl}
+            onblur={handleUrlBlur}
+            onkeydown={handleUrlKeyDown}
           />
-          <button onclick={addBookmark}>add</button>
+          <div style="display:flex;gap:0.6rem;">
+            <input
+              class="new-item-input"
+              placeholder="title (optional)"
+              bind:value={titleInput}
+              bind:this={titleInputEl}
+              onkeydown={handleTitleKeyDown}
+            />
+            <button onclick={addBookmark}>add</button>
+          </div>
         </div>
-      </div>
+      {/if}
     </div>
   {/snippet}
 

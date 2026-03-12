@@ -224,5 +224,25 @@ export function applyRoomData(roomsData, basePath, replace) {
   patchRoom({ store: _roomCache.store });
 }
 
+// Set whether the room appears on the public index.
+export function setRoomOpen(open) {
+  if (!_roomCache) return;
+  _roomCache.open = open;
+  patchRoom({ open });
+}
+
+export function getRoomOpen() {
+  return _roomCache?.open === true;
+}
+
+// Delete the room from the server. Caller is responsible for local cleanup.
+export async function deleteRoom() {
+  const slug = _currentSlug;
+  if (!slug) return;
+  await fetch(`/api/rooms/${slug}`, { method: 'DELETE' });
+  _roomCache = null;
+  _loadedSlug = null;
+}
+
 // No-op: migration was for old localStorage key formats, not needed with server storage.
 export function migrate() {}

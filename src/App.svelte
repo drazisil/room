@@ -3,7 +3,6 @@
   import { get } from 'svelte/store';
   import Breadcrumb from './components/Breadcrumb.svelte';
   import ContextMenu from './components/ContextMenu.svelte';
-  import MergeDialog from './components/MergeDialog.svelte';
   import NotepadPanel from './components/NotepadPanel.svelte';
   import ChecklistPanel from './components/ChecklistPanel.svelte';
   import BookmarksPanel from './components/BookmarksPanel.svelte';
@@ -22,19 +21,21 @@
   // Destructure so Svelte can auto-subscribe with $ syntax
   const { notepad: notepadPanels, checklist: checklistPanels, bookmarks: bookmarksPanels, image: imagePanels, folder: folderPanels } = panels;
 
-  import { gatherRoom, roomHasData, applyRoomData, setCurrentSlug, getAddressForSlug, getRoomId } from './lib/storage.js';
+  import { setCurrentSlug, getAddressForSlug } from './lib/storage.js';
   import { getSlug } from './lib/address.js'; // used in pathToUrl
+  import { isEditMode } from './lib/crypto.js';
   import JoinPage from './components/JoinPage.svelte';
+  import IndexPage from './components/IndexPage.svelte';
+  import ManagePage from './components/ManagePage.svelte';
 
-  // Page state: 'join' or 'room'
+  // Page state: 'index' | 'join' | 'room' | 'manage'
   let page = $state('room');
+  let activeSlug = $state('');
+  let editMode = $state(false);
 
   // Context menu state
   let ctxMenu = $state(null); // null or { x, y }
   let ctxPos = $state({ x: 0, y: 0 });
-
-  // Merge dialog state
-  let mergeDialog = $state(null); // null or { payload }
 
   // ID of newly created folder that needs auto-rename
   let autoRenameId = $state(null);
@@ -67,31 +68,62 @@
   }
 
   async function init() {
-    if (window.location.pathname === '/join') {
+    const pathname = window.location.pathname;
+
+    if (pathname === '/join') {
       page = 'join';
       return;
     }
 
-    // If no slug in the URL, check for a saved home address; redirect to /join if absent.
-    let slug = slugFromUrl(window.location.pathname);
-    if (!slug) {
+    if (pathname === '/manage') {
       const homeAddr = localStorage.getItem('room-address');
       if (!homeAddr) {
         history.replaceState({}, '', '/join');
         page = 'join';
         return;
       }
-      slug = homeAddr.toLowerCase().replace(/\s+/g, '-');
-      history.replaceState({}, '', `/${slug}`);
+      const slug = homeAddr.toLowerCase().replace(/\s+/g, '-');
+      setCurrentSlug(slug);
+      activeSlug = slug;
+      await loadAll('');
+      address = getAddressForSlug(slug);
+      page = 'manage';
+      return;
     }
 
-    page = 'room';
+    // / shows a random existing room read-only
+    if (pathname === '/') {
+      page = 'index';
+      return;
+    }
+
+    const slug = slugFromUrl(pathname);
+    if (!slug) {
+      page = 'index';
+      return;
+    }
+
     setCurrentSlug(slug);
-    const p = urlToPath(window.location.pathname);
+    activeSlug = slug;
+    editMode = isEditMode(slug);
+    page = 'room';
+    const p = urlToPath(pathname);
     currentPath.set(p);
     path = p;
     await loadAll(p);
     address = getAddressForSlug(slug);
+  }
+
+  function navigateToManage() {
+    history.pushState({}, '', '/manage');
+    init().catch(console.error);
+  }
+
+  function leaveManage() {
+    const homeAddr = localStorage.getItem('room-address');
+    const slug = homeAddr ? homeAddr.toLowerCase().replace(/\s+/g, '-') : activeSlug;
+    history.pushState({}, '', `/${slug}`);
+    init().catch(console.error);
   }
 
   function handleJoined(slug) {
@@ -133,8 +165,9 @@
     updatePanel(snap.kind, snap.id, { x: snap.x, y: snap.y, w: snap.w, h: snap.h });
   }
 
-  // Context menu
+  // Context menu (edit mode only)
   function handleContextMenuOpen(e) {
+    if (!editMode) return;
     if (e.target.closest('.panel')) return;
     e.preventDefault();
     ctxPos = { x: e.clientX, y: e.clientY };
@@ -210,73 +243,6 @@
     });
   }
 
-  // Save / Load room
-  function saveRoom() {
-    const basePath = get(currentPath);
-    const slug = slugFromUrl(window.location.pathname) || getSlug();
-    const rooms = gatherRoom(basePath);
-    const payload = {
-      version: 2,
-      exported: new Date().toISOString().slice(0, 10),
-      address: getAddressForSlug(slug),
-      id: getRoomId(),
-      rooms,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    const name = basePath ? basePath.split('/').pop() : 'room';
-    a.download = `${name}.room.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
-  function loadRoom() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.addEventListener('change', () => {
-      const file = input.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        let payload;
-        try { payload = JSON.parse(ev.target.result); } catch { alert('Invalid file.'); return; }
-        if (!payload.rooms) { alert('Not a room file.'); return; }
-        const basePath = get(currentPath);
-        if (roomHasData(basePath)) {
-          mergeDialog = { payload };
-        } else {
-          applyRoomPayload(payload, true);
-        }
-      };
-      reader.readAsText(file);
-    });
-    input.click();
-  }
-
-  function applyRoomPayload(payload, replace) {
-    const basePath = get(currentPath);
-    applyRoomData(payload.rooms, basePath, replace);
-    init().catch(console.error);
-  }
-
-  function handleMerge() {
-    const payload = mergeDialog.payload;
-    mergeDialog = null;
-    applyRoomPayload(payload, false);
-  }
-
-  function handleReplace() {
-    const payload = mergeDialog.payload;
-    mergeDialog = null;
-    applyRoomPayload(payload, true);
-  }
-
-  function handleMergeCancel() {
-    mergeDialog = null;
-  }
-
   function clearAutoRename() {
     autoRenameId = null;
   }
@@ -292,44 +258,46 @@
 
 <svelte:document oncontextmenu={handleContextMenuOpen} onclick={handleClick} />
 
-{#if page === 'join'}
+{#if page === 'index'}
+  <IndexPage />
+{:else if page === 'join'}
   <JoinPage onjoined={handleJoined} />
+{:else if page === 'manage'}
+  <ManagePage slug={activeSlug} onleave={leaveManage} />
 {:else}
 
 <div id="topbar">
   <Breadcrumb {path} {navigate} {address} />
   <div id="topbar-actions">
-    <button onclick={saveRoom}>save room</button>
-    <button onclick={loadRoom}>load room</button>
+    {#if editMode}
+      <button onclick={navigateToManage}>manage</button>
+    {/if}
   </div>
 </div>
 
 {#each $notepadPanels as p (p.id)}
-  <NotepadPanel {...p} />
+  <NotepadPanel {...p} readonly={!editMode} />
 {/each}
 
 {#each $checklistPanels as p (p.id)}
-  <ChecklistPanel {...p} />
+  <ChecklistPanel {...p} readonly={!editMode} />
 {/each}
 
 {#each $bookmarksPanels as p (p.id)}
-  <BookmarksPanel {...p} {navigate} />
+  <BookmarksPanel {...p} {navigate} readonly={!editMode} />
 {/each}
 
 {#each $folderPanels as p (p.id)}
-  <FolderPanel {...p} {navigate} autoRename={p.id === autoRenameId} onclearautorename={clearAutoRename} />
+  <FolderPanel {...p} {navigate} readonly={!editMode} autoRename={p.id === autoRenameId} onclearautorename={clearAutoRename} />
 {/each}
 
 {#each $imagePanels as p (p.id)}
-  <ImagePanel {...p} />
+  <ImagePanel {...p} readonly={!editMode} />
 {/each}
 
 {#if ctxMenu}
   <ContextMenu x={ctxMenu.x} y={ctxMenu.y} oncreate={handleContextMenuCreate} />
 {/if}
 
-{#if mergeDialog}
-  <MergeDialog onmerge={handleMerge} onreplace={handleReplace} oncancel={handleMergeCancel} />
 {/if}
 
-{/if}

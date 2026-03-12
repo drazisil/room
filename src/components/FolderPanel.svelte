@@ -6,7 +6,7 @@
   import { renamePath } from '../lib/storage.js';
   import { get } from 'svelte/store';
 
-  let { id, x, y, w, h, name: initialName, navigate, autoRename = false, onclearautorename } = $props();
+  let { id, x, y, w, h, name: initialName, navigate, autoRename = false, onclearautorename, readonly = false } = $props();
 
   let name = $state(initialName);
   let renaming = $state(false);
@@ -57,7 +57,7 @@
   });
 </script>
 
-<Panel {id} kind="folder" {x} {y} {w} {h} title="" extraClass="folder-panel">
+<Panel {id} kind="folder" {x} {y} {w} {h} title="" extraClass="folder-panel" {readonly}>
   {#snippet headerActions()}
     <span
       style="color:var(--faint);font-size:0.7rem;flex-shrink:0;cursor:pointer;"
