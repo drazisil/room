@@ -102,12 +102,13 @@ export function getOwnerVerifier() {
   return _roomCache?.ownerVerifier ?? null;
 }
 
-export function storeOwnerVerifier(slug, verifier) {
+export function storeOwnerVerifier(slug, verifier, address) {
   if (!_roomCache) _roomCache = { store: {} };
   _currentSlug = slug;
   _loadedSlug = slug;
   _roomCache.ownerVerifier = verifier;
-  patchRoom({ ownerVerifier: verifier });
+  _roomCache.address = address;
+  patchRoom({ ownerVerifier: verifier, address });
 }
 
 // --- Export / import helpers ---

@@ -43,6 +43,7 @@
     {/if}
   </span>
   <div id="topbar-actions">
+    <a href="/mine">i have a room</a>
     <a href="/join">want your own?</a>
   </div>
 </div>

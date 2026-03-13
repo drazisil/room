@@ -28,8 +28,9 @@
   import MinePage from './components/MinePage.svelte';
   import IndexPage from './components/IndexPage.svelte';
   import ManagePage from './components/ManagePage.svelte';
+  import AboutPage from './components/AboutPage.svelte';
 
-  // Page state: null (initializing) | 'index' | 'join' | 'mine' | 'room' | 'manage'
+  // Page state: null (initializing) | 'index' | 'join' | 'mine' | 'room' | 'manage' | 'about'
   let page = $state(null);
   let activeSlug = $state('');
   let editMode = $state(false);
@@ -73,6 +74,11 @@
 
     if (pathname === '/join') {
       page = 'join';
+      return;
+    }
+
+    if (pathname === '/about') {
+      page = 'about';
       return;
     }
 
@@ -276,6 +282,8 @@
   <!-- initializing -->
 {:else if page === 'index'}
   <IndexPage />
+{:else if page === 'about'}
+  <AboutPage />
 {:else if page === 'join'}
   <JoinPage onjoined={handleJoined} />
 {:else if page === 'mine'}
@@ -291,6 +299,7 @@
       <button onclick={navigateToManage}>manage</button>
       <button onclick={() => { clearEditMode(activeSlug); editMode = false; }}>leave</button>
     {:else}
+      <a href="/mine">i have a room</a>
       <a href="/join">want your own?</a>
     {/if}
   </div>

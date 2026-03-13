@@ -94,6 +94,12 @@
     <div class="manage-address">{address}</div>
 
     <div class="manage-section">
+      <p class="manage-hint">right-click the room to add a panel — notepad, checklist, bookmarks, or folder.</p>
+      <p class="manage-hint">drag a panel by its header to move it. drag the corner to resize. × to delete.</p>
+      <p class="manage-hint">drop an image file onto the room to add it. ctrl+z to undo.</p>
+    </div>
+
+    <div class="manage-section">
       <div class="manage-row">
         <span class="manage-label">open room</span>
         <button class="toggle" class:on={open} onclick={toggleOpen} aria-pressed={open}>

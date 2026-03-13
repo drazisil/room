@@ -31,7 +31,7 @@ async function exportKeyAsBase64(key) {
   return btoa(String.fromCharCode(...new Uint8Array(raw)));
 }
 
-export async function storeOwnerVerifier(slug, passphrase) {
+export async function storeOwnerVerifier(slug, passphrase, address) {
   const key = await deriveKey(passphrase, slug);
   const enc = new TextEncoder();
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -44,7 +44,7 @@ export async function storeOwnerVerifier(slug, passphrase) {
     iv: btoa(String.fromCharCode(...iv)),
     ct: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
   };
-  persistVerifier(slug, verifier);
+  persistVerifier(slug, verifier, address);
   // Store derived key as session auth token for subsequent write requests
   sessionStorage.setItem(`${slug}:key`, await exportKeyAsBase64(key));
 }

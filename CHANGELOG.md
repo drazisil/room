@@ -1,14 +1,28 @@
 # Changelog
 
 All notable changes to this project will be documented here.
+Versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-03-13
+
+### Added
+- `/about` page with full vision document
+- "what is roomcity.org?" link on `/join`
+- "i have a room" link in topbar and index for non-owners
+- "want your own?" link now appears on all room views, not just the index
+- Editing instructions on `/manage`
+- Server event log at `/var/log/roomcity/app.log` (room created, deleted, verify ok/fail)
+
 ### Fixed
-- "want your own?" link no longer flickers on the index page (`page` state now initializes to `null` instead of `'room'`)
-- "want your own?" link now appears on all room views for non-owners, not just the index page
-- `#topbar-actions a` styles added globally so the link doesn't show in browser `:visited` colors
-- Room id assignment no longer fires an unauthenticated PATCH (which caused a 403 for visitors on owned rooms)
+- "want your own?" link no longer flickers on page load (`page` state initializes to `null`)
+- `:visited` link color no longer overrides topbar link styles
+- Room id assignment no longer fires an unauthenticated PATCH (caused 403 for visitors)
+- Room creation now sends `ownerVerifier` and `address` in a single PATCH, eliminating a race condition that could lose the ownerVerifier on empty rooms
+
+### Changed
+- Deploy script at `../infra/deploy-roomcity.sh` replaces manual SCP
 
 ## [0.0.1] - 2026-03-13 — first public deployment
 

@@ -229,14 +229,14 @@ export async function handleApiRequest(req, res) {
     try { validateSlug(slug); } catch { send(res, 400, { error: 'invalid slug' }); return true; }
     const ip = getClientIp(req);
     if (!checkRateLimit(ip, slug)) {
-      logEvent('verify.rate_limited', { slug, ip });
+      logEvent('verify.rate_limited', { slug });
       send(res, 429, { error: 'too many attempts' });
       return true;
     }
     const room = await readRoom(slug);
     if (!room?.ownerVerifier) { send(res, 404, { error: 'not found' }); return true; }
     const ok = await verifyOwnership(req, room);
-    logEvent(ok ? 'verify.ok' : 'verify.fail', { slug, ip });
+    logEvent(ok ? 'verify.ok' : 'verify.fail', { slug });
     send(res, ok ? 200 : 403, ok ? { ok: true } : { error: 'forbidden' });
     return true;
   }
@@ -277,9 +277,11 @@ export async function handleApiRequest(req, res) {
         const authed = await verifyOwnership(req, current);
         if (!authed) { send(res, 403, { error: 'forbidden' }); return true; }
       }
+      const isNew = !current;
       const base = current || { store: {} };
       const updated = mergeRoom(base, patch);
       await writeRoom(slug, updated);
+      if (isNew) logEvent('room.created', { slug });
       send(res, 200, sanitizeRoom(updated));
     } else if (req.method === 'PUT') {
       const current = await readRoom(slug);
@@ -299,7 +301,7 @@ export async function handleApiRequest(req, res) {
       }
       const { unlink } = await import('node:fs/promises');
       await unlink(join(DATA_DIR, `${slug}.json`)).catch(() => {});
-      logEvent('room.deleted', { slug, ip: getClientIp(req) });
+      logEvent('room.deleted', { slug });
       send(res, 200, { deleted: true });
     } else {
       send(res, 405, { error: 'method not allowed' });

@@ -1,7 +1,6 @@
 <script>
   import { generateAddress } from '../lib/address.js';
   import { storeOwnerVerifier, setEditMode } from '../lib/crypto.js';
-  import { setAddressForSlug } from '../lib/storage.js';
 
   let { onjoined } = $props();
 
@@ -27,8 +26,7 @@
     busy = true;
     try {
       const slug = candidate.toLowerCase().replace(/\s+/g, '-');
-      await storeOwnerVerifier(slug, passphrase);
-      setAddressForSlug(slug, candidate);
+      await storeOwnerVerifier(slug, passphrase, candidate);
       localStorage.setItem('room-address', candidate); // home bookmark for / redirect
       setEditMode(slug);
       onjoined(slug);
@@ -49,6 +47,7 @@
         <button onclick={reroll}>try another</button>
         <button class="primary" onclick={accept}>this is my place</button>
       </div>
+      <a class="join-about" href="/about">what is roomcity.org?</a>
     </div>
   {:else}
     <div class="join-box">
@@ -178,4 +177,13 @@
     font-size: 0.8rem;
     color: var(--faint);
   }
+
+  .join-about {
+    font-size: 0.8rem;
+    color: var(--faint);
+    text-decoration: none;
+    letter-spacing: 0.04em;
+  }
+  .join-about:visited { color: var(--faint); }
+  .join-about:hover { color: var(--ink); }
 </style>
