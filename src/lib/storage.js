@@ -41,10 +41,12 @@ export async function loadRoom() {
 
   _loadedSlug = slug;
 
-  // Ensure room has a stable ID
+  // Ensure room has a stable ID — only persist if we're the owner
   if (!_roomCache.id) {
     _roomCache.id = globalThis.crypto.randomUUID();
-    patchRoom({ id: _roomCache.id });
+    if (sessionStorage.getItem(`${slug}:key`)) {
+      patchRoom({ id: _roomCache.id });
+    }
   }
 }
 

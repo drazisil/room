@@ -290,6 +290,8 @@
     {#if editMode}
       <button onclick={navigateToManage}>manage</button>
       <button onclick={() => { clearEditMode(activeSlug); editMode = false; }}>leave</button>
+    {:else}
+      <a href="/join">want your own?</a>
     {/if}
   </div>
 </div>

@@ -76,6 +76,13 @@ button:hover { color: var(--ink); }
 }
 #topbar-actions button:hover { color: #fff; }
 
+#topbar-actions a {
+  color: var(--faint);
+  text-decoration: none;
+}
+#topbar-actions a:visited { color: var(--faint); }
+#topbar-actions a:hover { color: var(--ink); }
+
 /* ── Context menu ── */
 .ctx-menu {
   position: fixed;
