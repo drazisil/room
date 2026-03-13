@@ -29,8 +29,8 @@
   import IndexPage from './components/IndexPage.svelte';
   import ManagePage from './components/ManagePage.svelte';
 
-  // Page state: 'index' | 'join' | 'mine' | 'room' | 'manage'
-  let page = $state('room');
+  // Page state: null (initializing) | 'index' | 'join' | 'mine' | 'room' | 'manage'
+  let page = $state(null);
   let activeSlug = $state('');
   let editMode = $state(false);
 
@@ -272,7 +272,9 @@
 
 <svelte:document oncontextmenu={handleContextMenuOpen} onclick={handleClick} />
 
-{#if page === 'index'}
+{#if page === null}
+  <!-- initializing -->
+{:else if page === 'index'}
   <IndexPage />
 {:else if page === 'join'}
   <JoinPage onjoined={handleJoined} />
